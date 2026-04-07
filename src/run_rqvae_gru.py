@@ -3,16 +3,16 @@ from pathlib import Path
 import pandas as pd
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from src.models.dataset import build_dataloaders
-from src.models.preprocessing import (
+from src.dataset import build_dataloaders
+from src.preprocessing import (
     build_code_to_cities,
     build_final_dataset,
     build_rq_codebook,
     create_trip_sequences,
     train_word2vec,
 )
-from src.models.rqvae_gru import RQVAEPredictor
-from src.models.train_infer import predict_top4_cities, train_model
+from src.rqvae_gru import RQVAEPredictor
+from src.train_infer import predict_top4_cities, train_model
 
 
 def main():
