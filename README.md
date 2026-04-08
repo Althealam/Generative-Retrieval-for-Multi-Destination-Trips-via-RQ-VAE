@@ -49,3 +49,7 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 * Use rq-vae to generate the discrete city_id representations by using word2vec embeddings
 * Use GRU to predict the next city_id 
 * Score: 0.33884
+### 2026/4/8
+* Use transformer+rq-vae+word2vec to predict the next city_id, and its score is 0.33429
+* Increase the embedding_dim from 128 to 256, but the score is decreasing
+* Drop the RQ-VAE, use embedding table, and its score is 0.44354815884067816
