@@ -17,6 +17,28 @@ def create_trip_sequences(df: pd.DataFrame) -> pd.DataFrame:
     )
     return sequences
 
+def create_mutliple_sequences(df: pd.DataFrame) -> pd.DataFrame:
+    data = df.copy()
+    df['checkin'] = pd.to_datetime(data['checkin'])
+    df['checkout'] = pd.to_datetime(data['checkout'])
+
+    # get features
+    df['stay_duration'] = (df['checkout']-df['checkin']).dt.days
+    # clip duration to the range 1-30
+    df['stay_duration'] = df['stay_duration'].clip(1, 30)
+
+    df['checkin_month'] = df['checkin'].dt.month
+
+    sequences = df.groupby('utrip_id').agg({
+        'city_id': list,
+        'stay_duration': list,
+        'checkin_month': 'first', # only get the first month in the trip
+        'booker_country': 'first', # only get the first booker country in the trip
+        'device_class': 'first' # only get the first device class in the trip
+    }).reset_index()
+
+    return sequences
+
 
 def train_word2vec(train_trips: pd.DataFrame, vector_size: int = 64, window: int = 5) -> Word2Vec:
     """Train Word2Vec embeddings on city sequences."""

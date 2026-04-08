@@ -8,15 +8,17 @@ from src.preprocessing import (
     build_code_to_cities,
     build_final_dataset,
     build_rq_codebook,
+    create_mutliple_sequences,
     create_trip_sequences,
+    create_multiple_sequences,
     train_word2vec,
 )
 from src.rqvae_gru import RQVAEPredictor
-from src.train_infer import predict_top4_cities, train_model
-
+from src.rqvae_train_infer import predict_top4_cities, train_model
+from src.rqvae_transformer import RQVAETransformer
 
 def main():
-    root_dir = Path(__file__).resolve().parents[2]
+    # root_dir = Path(__file__).resolve().parents[2]
     # data_dir = root_dir / "data"
     output_dir = "/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/output"
     # output_dir.mkdir(parents=True, exist_ok=True)
@@ -25,8 +27,8 @@ def main():
     test_set = pd.read_csv("/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/data/test_set.csv")
 
     print("正在聚合行程序列...")
-    train_trips = create_trip_sequences(train_set)
-    test_trips = create_trip_sequences(test_set)
+    train_trips = create_mutliple_sequences(train_set)
+    test_trips = create_mutliple_sequences(test_set)
 
     print("正在训练 Word2Vec...")
     w2v = train_word2vec(train_trips, vector_size=64, window=5)
@@ -40,8 +42,8 @@ def main():
     print(f"训练集样本: {len(train_x)} | 测试集样本: {len(test_x)}")
 
     train_loader, test_loader = build_dataloaders(train_x, train_y, test_x, batch_size=256)
-
-    model = RQVAEPredictor(num_codes=33, embedding_dim=64, hidden_dim=128)
+    
+    model = RQVAETransformer()
     model = train_model(model, train_loader, epochs=5, lr=0.001)
 
     code_to_cities = build_code_to_cities(city_to_codes, train_set)

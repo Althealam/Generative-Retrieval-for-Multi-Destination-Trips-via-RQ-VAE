@@ -16,3 +16,4 @@ class RQVAEPredictor(nn.Module):
         out1 = self.fc_code1(last_hidden)
         out2 = self.fc_code2(last_hidden)
         return out1, out2
+
