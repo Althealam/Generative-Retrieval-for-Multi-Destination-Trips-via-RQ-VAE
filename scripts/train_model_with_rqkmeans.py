@@ -9,8 +9,8 @@ from src.preprocessing import (
     build_final_dataset,
     build_rq_codebook,
     create_mutliple_sequences,
-    create_trip_sequences,
-    create_multiple_sequences,
+    # create_trip_sequences,
+    # create_multiple_sequences,
     train_word2vec,
 )
 from src.rqvae_gru import RQVAEPredictor
@@ -55,7 +55,7 @@ def main():
     )
     submission_df.insert(0, "utrip_id", test_trips["utrip_id"].tolist())
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    submission_path = os.path.join(output_dir, f"submission_{timestamp}.csv")
+    submission_path = os.path.join(output_dir, f"submission_rqkmeans_transformer_{timestamp}.csv")
     submission_df.to_csv(submission_path, index=False)
     print(f"✅ {submission_path} 已生成！")
 

@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
 from sklearn.cluster import KMeans
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import normalize, RobustScaler
+from sklearn.cluster import MiniBatchKMeans
 
 def create_trip_sequences(df: pd.DataFrame) -> pd.DataFrame:
     """Sort records by check-in time and aggregate rows into trip sequences."""
@@ -38,34 +40,108 @@ def create_mutliple_sequences(df: pd.DataFrame) -> pd.DataFrame:
     }).reset_index()
 
     return sequences
-
-
-def train_word2vec(train_trips: pd.DataFrame, vector_size: int = 64, window: int = 5) -> Word2Vec:
-    """Train Word2Vec embeddings on city sequences."""
+    
+def train_word2vec(train_trips, vector_size=128, window=10):
     all_city_sentences = train_trips["city_id"].apply(lambda x: [str(c) for c in x]).tolist()
-    return Word2Vec(all_city_sentences, vector_size=vector_size, window=window, min_count=1, workers=4)
+    # 增加 vector_size, 增加 epochs(迭代次数), 增加 ns_exponent 鼓励区分低频词
+    model = Word2Vec(all_city_sentences, 
+                     vector_size=vector_size, 
+                     window=window, 
+                     min_count=1, 
+                     workers=4, 
+                     epochs=30,  # 增加训练轮数
+                     sg=1,       # 使用 Skip-gram 往往对中低频词更好
+                     hs=0)       # 使用 Negative Sampling
+    return model
+
+# def train_word2vec(train_trips: pd.DataFrame, vector_size: int = 64, window: int = 5) -> Word2Vec:
+#     """Train Word2Vec embeddings on city sequences."""
+#     all_city_sentences = train_trips["city_id"].apply(lambda x: [str(c) for c in x]).tolist()
+#     return Word2Vec(all_city_sentences, vector_size=vector_size, window=window, min_count=1, workers=4)
+
 
 
 def build_rq_codebook(
     train_set: pd.DataFrame,
     w2v: Word2Vec,
-    n_clusters: int = 32,
+    n_clusters: int = 128, 
     random_state: int = 42,
 ) -> dict[int, tuple[int, int]]:
-    """Build two-level residual quantization mapping: city_id -> (code1, code2)."""
     all_unique_cities = [str(c) for c in train_set["city_id"].unique()]
-    city_vectors = np.array([w2v.wv[c] for c in all_unique_cities])
+    # 获取原始向量
+    raw_vectors = np.array([w2v.wv[c] for c in all_unique_cities])
+    
+    # 【改动 1】L2 归一化：让所有城市在“方向”上竞争，而不是“长度”
+    city_vectors = normalize(raw_vectors, axis=1)
 
-    kmeans1 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+    # 第一层聚类
+    kmeans1 = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state, n_init=10, batch_size=2048)
     codes1 = kmeans1.fit_predict(city_vectors)
 
+    # 计算残差
     residuals = city_vectors - kmeans1.cluster_centers_[codes1]
+    
+    # 【改动 2】强力拉伸残差：强制让微小的区别变大
+    scaler = RobustScaler()
+    residuals_scaled = scaler.fit_transform(residuals)
+    # 再次归一化残差
+    residuals_final = normalize(residuals_scaled, axis=1)
 
-    kmeans2 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
-    codes2 = kmeans2.fit_predict(residuals)
+    # 第二层聚类
+    kmeans2 = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state, n_init=10, batch_size=2048)
+    codes2 = kmeans2.fit_predict(residuals_final)
 
     city_to_codes = {int(all_unique_cities[i]): (int(codes1[i]), int(codes2[i])) for i in range(len(all_unique_cities))}
     return city_to_codes
+
+# def build_rq_codebook(
+#     train_set: pd.DataFrame,
+#     w2v: Word2Vec,
+#     n_clusters: int = 128,  # 第一步：显著增加簇的数量，从32提到128
+#     random_state: int = 42,
+# ) -> dict[int, tuple[int, int]]:
+#     all_unique_cities = [str(c) for c in train_set["city_id"].unique()]
+#     city_vectors = np.array([w2v.wv[c] for c in all_unique_cities])
+
+#     # 1. 第一层聚类
+#     kmeans1 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+#     codes1 = kmeans1.fit_predict(city_vectors)
+
+#     # 2. 计算残差并标准化 (这是关键！)
+#     residuals = city_vectors - kmeans1.cluster_centers_[codes1]
+    
+#     # 对残差进行缩放，让模型更容易在微小差异中找到聚类中心
+#     scaler = StandardScaler()
+#     residuals_scaled = scaler.fit_transform(residuals)
+
+#     # 3. 第二层聚类
+#     # 同样使用更多的簇，让组合总数达到 128 * 128 = 16,384
+#     kmeans2 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+#     codes2 = kmeans2.fit_predict(residuals_scaled)
+
+#     city_to_codes = {int(all_unique_cities[i]): (int(codes1[i]), int(codes2[i])) for i in range(len(all_unique_cities))}
+#     return city_to_codes
+
+# def build_rq_codebook(
+#     train_set: pd.DataFrame,
+#     w2v: Word2Vec,
+#     n_clusters: int = 32,
+#     random_state: int = 42,
+# ) -> dict[int, tuple[int, int]]:
+#     """Build two-level residual quantization mapping: city_id -> (code1, code2)."""
+#     all_unique_cities = [str(c) for c in train_set["city_id"].unique()]
+#     city_vectors = np.array([w2v.wv[c] for c in all_unique_cities])
+
+#     kmeans1 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+#     codes1 = kmeans1.fit_predict(city_vectors)
+
+#     residuals = city_vectors - kmeans1.cluster_centers_[codes1]
+
+#     kmeans2 = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+#     codes2 = kmeans2.fit_predict(residuals)
+
+#     city_to_codes = {int(all_unique_cities[i]): (int(codes1[i]), int(codes2[i])) for i in range(len(all_unique_cities))}
+#     return city_to_codes
 
 
 def build_final_dataset(

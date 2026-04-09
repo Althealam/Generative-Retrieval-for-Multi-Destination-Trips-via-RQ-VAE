@@ -47,7 +47,7 @@ def main():
     # data_dir = root_dir / "data"
     # output_dir = root_dir / "output"
     # output_dir.mkdir(parents=True, exist_ok=True)
-    output_dir = "/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/output"
+    output_dir = "/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/output/submission"
 
     train_set = pd.read_csv('/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/data/train_set.csv')
     test_set = pd.read_csv('/Users/althealam/Desktop/GitHub/Generative-Retrieval-for-Multi-Destination-Trips-via-RQ-VAE/data/test_set.csv')
@@ -86,7 +86,7 @@ def main():
     submission_df.insert(0, "utrip_id", test_trips["utrip_id"].tolist())
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    submission_path = os.path.join(output_dir, f"submission_{timestamp}.csv")
+    submission_path = os.path.join(output_dir, f"submission_embedding_{timestamp}.csv")
     submission_df.to_csv(submission_path, index=False)
     print(f"✅ {submission_path} 已生成！")
 
