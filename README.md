@@ -59,4 +59,4 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 ### 2026/4/11
 * Update feature engineering
 * Add a multi-step training, which means that we can train A-B-C with A-B and A-B-C, so it will have more training data
-* Embedding model performance is 0.45
+* Embedding model performance is 0.45, and rqvae with transformer performance is 0.3
