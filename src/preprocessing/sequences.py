@@ -88,8 +88,20 @@ def build_rq_codebook(
 
 
 def build_final_dataset(
-    trip_df: pd.DataFrame, mapping: dict[int, tuple[int, int]], is_test: bool = False
+    trip_df: pd.DataFrame,
+    mapping: dict[int, tuple[int, int]],
+    is_test: bool = False,
+    multi_step: bool = False,
 ) -> tuple[list[list[int]], list[list[int]]]:
+    """Build (code-prefix → next code-pair) samples for RQ-KMeans / RQVAE.
+
+    Each city is two code tokens. **Default** (``multi_step=False``): one training row
+    per trip, predicting only the **last** city's code pair. **``multi_step=True``**:
+    same idea as ``build_city_sequence_pack(..., multi_step=True)`` — for a trip with
+    cities ``A,B,C`` emit ``(codes(A)→codes(B))`` and ``(codes(A,B)→codes(C))``.
+    Test rows (``is_test=True``) always use a single prefix per trip (all codes except
+    the last pair), regardless of ``multi_step``.
+    """
     x_values: list[list[int]] = []
     y_values: list[list[int]] = []
 
@@ -105,6 +117,13 @@ def build_final_dataset(
 
         if is_test:
             x_values.append(full_code_seq[:-2])
+        elif multi_step:
+            m = len(cities)
+            if m < 2:
+                continue
+            for k in range(1, m):
+                x_values.append(full_code_seq[: 2 * k])
+                y_values.append(full_code_seq[2 * k : 2 * k + 2])
         else:
             if len(full_code_seq) >= 4:
                 x_values.append(full_code_seq[:-2])

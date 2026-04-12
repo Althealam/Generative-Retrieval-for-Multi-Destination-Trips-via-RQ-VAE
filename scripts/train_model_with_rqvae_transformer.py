@@ -14,7 +14,7 @@ from src.datasets import build_dataloaders
 from src.models import RQVAETransformer
 from src.preprocessing import build_code_to_cities, build_final_dataset, create_mutliple_sequences
 from src.training.rqvae import predict_top4_cities_from_rqvae, train_rqvae_model
-from src.utils import data_dir, rqvae_dir, submission_dir, top_city_ids_from_train
+from src.utils import data_dir, print_accuracy_at_4_report, rqvae_dir, submission_dir, top_city_ids_from_train
 
 
 def parse_args():
@@ -24,6 +24,13 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--skip_eval", action="store_true", help="Do not run Accuracy@4 vs data/ground_truth.csv after training.")
+    parser.add_argument("--ground_truth", type=str, default=None, help="Optional path to ground_truth.csv (default: data/ground_truth.csv).")
+    parser.add_argument(
+        "--multi_step",
+        action="store_true",
+        help="Expand each trip into many prefix→next-code-pair training rows (test inference unchanged).",
+    )
     return parser.parse_args()
 
 
@@ -61,9 +68,13 @@ def main():
     train_trips = create_mutliple_sequences(train_set)
     test_trips = create_mutliple_sequences(test_set)
 
-    train_x, train_y = build_final_dataset(train_trips, city_to_codes, is_test=False)
+    train_x, train_y = build_final_dataset(
+        train_trips, city_to_codes, is_test=False, multi_step=args.multi_step
+    )
     test_x, _ = build_final_dataset(test_trips, city_to_codes, is_test=True)
-    print(f"✅ 数据集构建完成！训练样本: {len(train_x)} | 测试样本: {len(test_x)}")
+    print(
+        f"✅ 数据集构建完成！训练样本: {len(train_x)} | 测试样本: {len(test_x)} | multi_step={args.multi_step}"
+    )
 
     train_loader, test_loader = build_dataloaders(
         train_x,
@@ -102,6 +113,11 @@ def main():
     submission_path = sub_dir / f"submission_rqvae_transformer_{timestamp}.csv"
     submission_df.to_csv(submission_path, index=False)
     print(f"✅ {submission_path} 已生成！")
+    print_accuracy_at_4_report(
+        submission_df,
+        skip=args.skip_eval,
+        ground_truth_path=args.ground_truth,
+    )
 
 
 if __name__ == "__main__":

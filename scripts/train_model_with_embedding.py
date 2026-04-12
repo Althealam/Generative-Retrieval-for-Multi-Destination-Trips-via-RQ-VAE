@@ -22,7 +22,7 @@ from src.preprocessing import (
     create_mutliple_sequences,
 )
 from src.training.embedding import recommend_top4_cities, train_city_transformer
-from src.utils import data_dir, submission_dir, top_city_ids_from_train
+from src.utils import data_dir, print_accuracy_at_4_report, submission_dir, top_city_ids_from_train
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,6 +40,8 @@ def parse_args() -> argparse.Namespace:
         help="If set, expand each trip into many prefix→next-city samples (much larger/slower). Default: off.",
     )
     p.add_argument("--topk_candidates", type=int, default=50)
+    p.add_argument("--skip_eval", action="store_true", help="Do not run Accuracy@4 vs data/ground_truth.csv after training.")
+    p.add_argument("--ground_truth", type=str, default=None, help="Optional path to ground_truth.csv (default: data/ground_truth.csv).")
     return p.parse_args()
 
 
@@ -144,6 +146,11 @@ def main() -> None:
     submission_path = out_dir / f"submission_embedding_{timestamp}.csv"
     submission_df.to_csv(submission_path, index=False)
     print(f"✅ {submission_path} 已生成！")
+    print_accuracy_at_4_report(
+        submission_df,
+        skip=args.skip_eval,
+        ground_truth_path=args.ground_truth,
+    )
 
 
 if __name__ == "__main__":
