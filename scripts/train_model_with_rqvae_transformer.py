@@ -12,7 +12,12 @@ if str(ROOT) not in sys.path:
 
 from src.datasets import build_dataloaders
 from src.models import RQVAETransformer
-from src.preprocessing import build_code_to_cities, build_final_dataset, create_mutliple_sequences
+from src.preprocessing import (
+    build_booker_device_vocabs,
+    build_code_to_cities,
+    build_final_dataset_with_context,
+    create_mutliple_sequences,
+)
 from src.training.rqvae import predict_top4_cities_from_rqvae, train_rqvae_model
 from src.utils import data_dir, print_accuracy_at_4_report, rqvae_dir, submission_dir, top_city_ids_from_train
 
@@ -68,10 +73,22 @@ def main():
     train_trips = create_mutliple_sequences(train_set)
     test_trips = create_mutliple_sequences(test_set)
 
-    train_x, train_y = build_final_dataset(
-        train_trips, city_to_codes, is_test=False, multi_step=args.multi_step
+    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    train_x, train_y, train_b, train_d, train_m, train_s, train_tl, train_nu, train_rr, train_ls, train_sc = build_final_dataset_with_context(
+        train_trips,
+        city_to_codes,
+        booker_to_idx=booker_to_idx,
+        device_to_idx=device_to_idx,
+        is_test=False,
+        multi_step=args.multi_step,
     )
-    test_x, _ = build_final_dataset(test_trips, city_to_codes, is_test=True)
+    test_x, _, test_b, test_d, test_m, test_s, test_tl, test_nu, test_rr, test_ls, test_sc = build_final_dataset_with_context(
+        test_trips,
+        city_to_codes,
+        booker_to_idx=booker_to_idx,
+        device_to_idx=device_to_idx,
+        is_test=True,
+    )
     print(
         f"✅ 数据集构建完成！训练样本: {len(train_x)} | 测试样本: {len(test_x)} | multi_step={args.multi_step}"
     )
@@ -82,6 +99,8 @@ def main():
         test_x,
         batch_size=args.batch_size,
         pad_token=args.codebook_size,
+        train_ctx=(train_b, train_d, train_m, train_s, train_tl, train_nu, train_rr, train_ls, train_sc),
+        test_ctx=(test_b, test_d, test_m, test_s, test_tl, test_nu, test_rr, test_ls, test_sc),
     )
     model = RQVAETransformer(
         codebook_size=args.codebook_size,
@@ -89,6 +108,8 @@ def main():
         nhead=4,
         num_layers=2,
         dim_feedforward=512,
+        n_booker_countries=n_booker,
+        n_device_classes=n_device,
     )
     model = train_rqvae_model(model, train_loader, epochs=args.epochs, lr=args.lr)
 

@@ -26,22 +26,20 @@ def train_city_transformer(
     for epoch in range(epochs):
         total_loss = 0.0
         for batch in train_loader:
-            if len(batch) == 6:
-                batch_x, batch_y, b_b, b_d, b_m, b_s = batch
-                batch_x = batch_x.to(device)
-                batch_y = batch_y.to(device)
-                b_b = b_b.to(device)
-                b_d = b_d.to(device)
-                b_m = b_m.to(device)
-                b_s = b_s.to(device)
-                optimizer.zero_grad()
-                logits = model(batch_x, b_b, b_d, b_m, b_s)
-            else:
-                batch_x, batch_y = batch
-                batch_x = batch_x.to(device)
-                batch_y = batch_y.to(device)
-                optimizer.zero_grad()
-                logits = model(batch_x)
+            batch_x, batch_y, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc = batch
+            batch_x = batch_x.to(device)
+            batch_y = batch_y.to(device)
+            b_b = b_b.to(device)
+            b_d = b_d.to(device)
+            b_m = b_m.to(device)
+            b_s = b_s.to(device)
+            b_tl = b_tl.to(device)
+            b_nu = b_nu.to(device)
+            b_rr = b_rr.to(device)
+            b_ls = b_ls.to(device)
+            b_sc = b_sc.to(device)
+            optimizer.zero_grad()
+            logits = model(batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc)
 
             loss = criterion(logits, batch_y)
             loss.backward()
@@ -73,24 +71,18 @@ def recommend_top4_cities(
 
     with torch.no_grad():
         for batch in test_loader:
-            if torch.is_tensor(batch):
-                batch_x = batch.to(device)
-                logits = model(batch_x)
-            elif len(batch) == 5:
-                batch_x, b_b, b_d, b_m, b_s = batch
-                batch_x = batch_x.to(device)
-                b_b = b_b.to(device)
-                b_d = b_d.to(device)
-                b_m = b_m.to(device)
-                b_s = b_s.to(device)
-                logits = model(batch_x, b_b, b_d, b_m, b_s)
-            elif len(batch) == 1:
-                batch_x = batch[0].to(device)
-                logits = model(batch_x)
-            else:
-                raise ValueError(
-                    f"Unexpected test batch structure: {type(batch)}, len={getattr(batch, '__len__', 'n/a')}"
-                )
+            batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc = batch
+            batch_x = batch_x.to(device)
+            b_b = b_b.to(device)
+            b_d = b_d.to(device)
+            b_m = b_m.to(device)
+            b_s = b_s.to(device)
+            b_tl = b_tl.to(device)
+            b_nu = b_nu.to(device)
+            b_rr = b_rr.to(device)
+            b_ls = b_ls.to(device)
+            b_sc = b_sc.to(device)
+            logits = model(batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc)
 
             probs = torch.softmax(logits, dim=1)
             _, top_indices = torch.topk(probs, k=min(topk_candidates, probs.size(1)), dim=1)

@@ -22,10 +22,22 @@ def train_rqvae_model(
 
     for epoch in range(epochs):
         total_loss = 0.0
-        for batch_x, batch_y in train_loader:
-            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+        for batch_x, batch_y, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc in train_loader:
+            batch_x = batch_x.to(device)
+            batch_y = batch_y.to(device)
+            b_b = b_b.to(device)
+            b_d = b_d.to(device)
+            b_m = b_m.to(device)
+            b_s = b_s.to(device)
+            b_tl = b_tl.to(device)
+            b_nu = b_nu.to(device)
+            b_rr = b_rr.to(device)
+            b_ls = b_ls.to(device)
+            b_sc = b_sc.to(device)
             optimizer.zero_grad()
-            pred1, pred2 = model(batch_x)
+            pred1, pred2 = model(
+                batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc
+            )
             loss1 = criterion(pred1, batch_y[:, 0])
             loss2 = criterion(pred2, batch_y[:, 1])
             loss = loss1 + loss2
@@ -60,9 +72,20 @@ def predict_top4_cities_from_rqvae(
     all_predictions: list[list[int]] = []
 
     with torch.no_grad():
-        for batch_x in test_loader:
+        for batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc in test_loader:
             batch_x = batch_x.to(device)
-            pred1, pred2 = model(batch_x)
+            b_b = b_b.to(device)
+            b_d = b_d.to(device)
+            b_m = b_m.to(device)
+            b_s = b_s.to(device)
+            b_tl = b_tl.to(device)
+            b_nu = b_nu.to(device)
+            b_rr = b_rr.to(device)
+            b_ls = b_ls.to(device)
+            b_sc = b_sc.to(device)
+            pred1, pred2 = model(
+                batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc
+            )
             log_p1 = torch.log_softmax(pred1, dim=1)
             log_p2 = torch.log_softmax(pred2, dim=1)
 

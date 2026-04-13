@@ -1,4 +1,4 @@
-"""Train direct city-id Transformer; optional trip context + multi-step next-city targets."""
+"""Train direct city-id Transformer with required trip context."""
 
 from __future__ import annotations
 
@@ -32,7 +32,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--weight_decay", type=float, default=1e-4)
     p.add_argument("--label_smoothing", type=float, default=0.05)
-    p.add_argument("--no_context", action="store_true", help="Disable booker/device/month/stay embeddings")
     p.add_argument(
         "--multi_step",
         action="store_true",
@@ -60,18 +59,16 @@ def main() -> None:
     city_to_idx, idx_to_city = build_city_vocab(train_set)
     vocab_size = len(city_to_idx) + 2
 
-    use_context = not args.no_context
-    booker_to_idx = device_to_idx = None
-    n_booker = n_device = 0
-    if use_context:
-        booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    # 根据是否context，构建训练样本
+    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(
+        train_trips
+    )
 
     train_pack = build_city_sequence_pack(
         train_trips,
         city_to_idx,
         is_test=False,
         multi_step=args.multi_step,
-        use_context=use_context,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
     )
@@ -80,31 +77,45 @@ def main() -> None:
         city_to_idx,
         is_test=True,
         multi_step=False,
-        use_context=use_context,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
     )
 
     print(
         f"✅ City 数据集完成！训练样本: {len(train_pack.x)} | 测试样本: {len(test_pack.x)} "
-        f"| context={use_context} | multi_step={args.multi_step}"
+        f"| context=True | multi_step={args.multi_step}"
     )
 
-    if use_context:
-        train_ctx = (train_pack.ctx_booker, train_pack.ctx_device, train_pack.ctx_month, train_pack.ctx_stay)
-        test_ctx = (test_pack.ctx_booker, test_pack.ctx_device, test_pack.ctx_month, test_pack.ctx_stay)
-        train_loader, test_loader = build_city_dataloaders(
-            train_pack.x,
-            train_pack.y,
-            test_pack.x,
-            batch_size=args.batch_size,
-            train_ctx=train_ctx,
-            test_ctx=test_ctx,
-        )
-    else:
-        train_loader, test_loader = build_city_dataloaders(
-            train_pack.x, train_pack.y, test_pack.x, batch_size=args.batch_size
-        )
+    train_ctx = (
+        train_pack.ctx_booker,
+        train_pack.ctx_device,
+        train_pack.ctx_month,
+        train_pack.ctx_stay,
+        train_pack.ctx_trip_len,
+        train_pack.ctx_num_unique_cities,
+        train_pack.ctx_repeat_city_ratio,
+        train_pack.ctx_last_stay_days,
+        train_pack.ctx_same_country_streak,
+    )
+    test_ctx = (
+        test_pack.ctx_booker,
+        test_pack.ctx_device,
+        test_pack.ctx_month,
+        test_pack.ctx_stay,
+        test_pack.ctx_trip_len,
+        test_pack.ctx_num_unique_cities,
+        test_pack.ctx_repeat_city_ratio,
+        test_pack.ctx_last_stay_days,
+        test_pack.ctx_same_country_streak,
+    )
+    train_loader, test_loader = build_city_dataloaders(
+        train_pack.x,
+        train_pack.y,
+        test_pack.x,
+        batch_size=args.batch_size,
+        train_ctx=train_ctx,
+        test_ctx=test_ctx,
+    )
 
     model = CityTransformer(
         vocab_size=vocab_size,
@@ -112,7 +123,6 @@ def main() -> None:
         d_model=256,
         nhead=4,
         num_layers=2,
-        use_trip_context=use_context,
         n_booker_countries=n_booker,
         n_device_classes=n_device,
     )

@@ -6,7 +6,6 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,10 +15,11 @@ if str(ROOT) not in sys.path:
 from src.datasets import DEFAULT_CODE_PAD_TOKEN, build_dataloaders
 from src.models import RQKMeansTransformer
 from src.preprocessing import (
+    build_booker_device_vocabs,
     build_code_to_cities,
-    build_final_dataset,
+    build_final_dataset_with_context,
     build_rq_codebook,
-    create_mutliple_sequences,
+    create_multiple_sequences,
     train_word2vec,
 )
 from src.training.rqkmeans import predict_top4_cities, train_model
@@ -49,19 +49,31 @@ def main() -> None:
     test_set = pd.read_csv(data_dir() / "test_set.csv")
 
     print("正在聚合行程序列...")
-    train_trips = create_mutliple_sequences(train_set)
-    test_trips = create_mutliple_sequences(test_set)
+    train_trips = create_multiple_sequences(train_set)
+    test_trips = create_multiple_sequences(test_set)
 
     print("正在训练 Word2Vec...")
     w2v = train_word2vec(train_trips, vector_size=64, window=5)
 
     print("正在构建 RQ 语义索引 (Residual Quantization)...")
     city_to_codes = build_rq_codebook(train_set, w2v, n_clusters=N_CLUSTERS, random_state=42)
-
-    train_x, train_y = build_final_dataset(
-        train_trips, city_to_codes, is_test=False, multi_step=args.multi_step
+    
+    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    train_x, train_y, train_b, train_d, train_m, train_s, train_tl, train_nu, train_rr, train_ls, train_sc = build_final_dataset_with_context(
+        train_trips,
+        city_to_codes,
+        booker_to_idx=booker_to_idx,
+        device_to_idx=device_to_idx,
+        is_test=False,
+        multi_step=args.multi_step,
     )
-    test_x, _ = build_final_dataset(test_trips, city_to_codes, is_test=True)
+    test_x, _, test_b, test_d, test_m, test_s, test_tl, test_nu, test_rr, test_ls, test_sc = build_final_dataset_with_context(
+        test_trips,
+        city_to_codes,
+        booker_to_idx=booker_to_idx,
+        device_to_idx=device_to_idx,
+        is_test=True,
+    )
     print("✅ 数据集构建完成！")
     print(f"训练集样本: {len(train_x)} | 测试集样本: {len(test_x)} | multi_step={args.multi_step}")
 
@@ -71,9 +83,14 @@ def main() -> None:
         test_x,
         batch_size=256,
         pad_token=DEFAULT_CODE_PAD_TOKEN,
+        train_ctx=(train_b, train_d, train_m, train_s, train_tl, train_nu, train_rr, train_ls, train_sc),
+        test_ctx=(test_b, test_d, test_m, test_s, test_tl, test_nu, test_rr, test_ls, test_sc),
     )
 
-    model = RQKMeansTransformer()
+    model = RQKMeansTransformer(
+        n_booker_countries=n_booker,
+        n_device_classes=n_device,
+    )
     model = train_model(model, train_loader, epochs=5, lr=0.001)
 
     code_to_cities = build_code_to_cities(city_to_codes, train_set)
