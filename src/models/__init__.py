@@ -1,17 +1,14 @@
-from src.models.city_transformer import CityTransformer
-from src.models.positional import PositionalEncoding
-from src.models.rqkmeans_gru import RQKmeansPredictor
-from src.models.rqkmeans_transformer import RQKMeansTransformer
-from src.models.rqvae_autoencoder import RQVAE
-from src.models.rqvae_transformer import RQVAETransformer
-from src.models.rqvae_vector_quantizer import ResidualVectorQuantizer
+from src.models.embedding import CityTransformer, PositionalEncoding
+from src.models.rqkmeans import RQKMeansTransformer, RQKmeansGRU
+from src.models.rqvae import RQVAE, RQVAETransformer, ResidualVectorQuantizer, RQVAEGRU
 
 __all__ = [
     "PositionalEncoding",
     "CityTransformer",
     "RQVAETransformer",
+    "RQVAEGRU",
     "RQKMeansTransformer",
-    "RQKmeansPredictor",
+    "RQKmeansGRU",
     "RQVAE",
-    "ResidualVectorQuantizer",
+    "ResidualVectorQuantizer"
 ]

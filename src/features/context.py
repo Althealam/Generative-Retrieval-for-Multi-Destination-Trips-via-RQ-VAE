@@ -1,4 +1,4 @@
-"""Trip-level side features aligned with create_mutliple_sequences aggregates."""
+"""Trip-level side features aligned with trip aggregates (booker, device, stay, etc.)."""
 
 from __future__ import annotations
 

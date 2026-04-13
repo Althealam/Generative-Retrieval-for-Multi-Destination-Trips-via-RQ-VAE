@@ -1,40 +1,22 @@
-import math
-
 import torch
 import torch.nn as nn
 
-from src.models.positional import PositionalEncoding
 
+class RQKmeansGRU(nn.Module):
+    """GRU baseline over code tokens + same trip context fusion as the RQ-KMeans Transformer."""
 
-class RQKMeansTransformer(nn.Module):
     def __init__(
         self,
         num_codes: int = 33,
-        d_model: int = 256,
-        nhead: int = 4,
-        num_layers: int = 2,
-        dim_feedforward: int = 256,
-        max_len: int = 100,
+        embedding_dim: int = 64,
+        hidden_dim: int = 128,
         codebook_size: int = 32,
-        pad_code: int = 32,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
     ):
         super().__init__()
-        self.d_model = d_model
-        self.pad_code = pad_code
-        self.codebook_size = codebook_size
-
-        self.embedding = nn.Embedding(num_codes, d_model, padding_idx=pad_code)
-        self.pos_encoder = PositionalEncoding(d_model, max_len=max_len)
-
-        decoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            batch_first=True,
-        )
-        self.transformer_block = nn.TransformerEncoder(decoder_layer, num_layers=num_layers)
+        self.embedding = nn.Embedding(num_codes, embedding_dim, padding_idx=32)
+        self.gru = nn.GRU(embedding_dim, hidden_dim, batch_first=True)
 
         self.emb_booker = nn.Embedding(n_booker_countries + 1, 64, padding_idx=0)
         self.emb_device = nn.Embedding(n_device_classes + 1, 48, padding_idx=0)
@@ -45,15 +27,11 @@ class RQKMeansTransformer(nn.Module):
         self.emb_repeat_ratio = nn.Embedding(11, 24)
         self.emb_last_stay = nn.Embedding(31, 32)
         self.emb_same_country_streak = nn.Embedding(31, 32)
-        self.ctx_proj = nn.Linear(64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32, d_model)
+        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32
+        self.ctx_proj = nn.Linear(ctx_dim, hidden_dim)
 
-        self.fc_code1 = nn.Linear(d_model, codebook_size)
-        self.fc_code2 = nn.Linear(d_model, codebook_size)
-
-    def _generate_causal_mask(self, sz: int, device):
-        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float("-inf")).masked_fill(mask == 1, float(0.0))
-        return mask.to(device)
+        self.fc_code1 = nn.Linear(hidden_dim, codebook_size)
+        self.fc_code2 = nn.Linear(hidden_dim, codebook_size)
 
     def forward(
         self,
@@ -68,17 +46,9 @@ class RQKMeansTransformer(nn.Module):
         last_stay_idx,
         same_country_streak_idx,
     ):
-        _, seq_len = x.size()
-        device = x.device
-
-        padding_mask = x == self.pad_code
-        causal_mask = self._generate_causal_mask(seq_len, device)
-
-        x = self.embedding(x) * math.sqrt(self.d_model)
-        x = self.pos_encoder(x)
-        output = self.transformer_block(x, mask=causal_mask, src_key_padding_mask=padding_mask)
-
-        last_hidden = output[:, -1, :]
+        embeds = self.embedding(x)
+        _, hn = self.gru(embeds)
+        last_hidden = hn[-1]
         ctx = torch.cat(
             [
                 self.emb_booker(booker_idx),

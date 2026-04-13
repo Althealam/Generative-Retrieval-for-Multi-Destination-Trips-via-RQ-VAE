@@ -1,3 +1,7 @@
+"""Train RQ-VAE on Word2Vec city vectors; export city→(code1, code2) JSON for the Transformer script."""
+
+from __future__ import annotations
+
 import json
 import sys
 from datetime import datetime
@@ -12,12 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.features import create_trip_sequences, train_word2vec
 from src.models import RQVAE
-from src.preprocessing import create_trip_sequences, train_word2vec
 from src.utils import data_dir, rqvae_dir
 
 
-def build_city_vectors(train_set: pd.DataFrame, vector_size: int = 128, window: int = 10):
+def build_city_vectors(
+    train_set: pd.DataFrame, *, vector_size: int = 128, window: int = 10
+) -> tuple[list[int], np.ndarray]:
     train_trips = create_trip_sequences(train_set)
     w2v = train_word2vec(train_trips, vector_size=vector_size, window=window)
     unique_cities = sorted(train_set["city_id"].unique().tolist())
@@ -25,7 +31,9 @@ def build_city_vectors(train_set: pd.DataFrame, vector_size: int = 128, window: 
     return unique_cities, vectors
 
 
-def train_rqvae(vectors: np.ndarray, epochs: int = 30, batch_size: int = 512, lr: float = 1e-3):
+def train_rqvae(
+    vectors: np.ndarray, *, epochs: int = 30, batch_size: int = 512, lr: float = 1e-3
+) -> tuple[RQVAE, torch.device]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dataset = TensorDataset(torch.from_numpy(vectors))
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -64,7 +72,9 @@ def train_rqvae(vectors: np.ndarray, epochs: int = 30, batch_size: int = 512, lr
     return model, device
 
 
-def export_city_to_codes(model: RQVAE, device: torch.device, unique_cities: list[int], vectors: np.ndarray):
+def export_city_to_codes(
+    model: RQVAE, device: torch.device, unique_cities: list[int], vectors: np.ndarray
+) -> dict[int, list[int]]:
     with torch.no_grad():
         x = torch.from_numpy(vectors).to(device)
         codes = model.encode_codes(x).cpu().numpy()
@@ -73,7 +83,7 @@ def export_city_to_codes(model: RQVAE, device: torch.device, unique_cities: list
     }
 
 
-def main():
+def main() -> None:
     output_dir = rqvae_dir()
     output_dir.mkdir(parents=True, exist_ok=True)
 

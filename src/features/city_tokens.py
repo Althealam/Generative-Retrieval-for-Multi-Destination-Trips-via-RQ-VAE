@@ -1,4 +1,4 @@
-"""Build city-id token sequences with required context before ``CitySequenceDataset``."""
+"""City-id token sequences and vocab for the embedding (CityTransformer) path."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from src.datasets.tokens import UNK_TOKEN_ID
-from src.preprocessing.trip_context import row_to_context_indices
+from src.features.context import row_to_context_indices
 
 
 @dataclass

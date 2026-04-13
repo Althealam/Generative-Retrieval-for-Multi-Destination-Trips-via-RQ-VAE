@@ -69,3 +69,6 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 - Embedding: 0.458422
 - RQKMeans: 0.272268
 - RQVAE: 0.327814
+* Add GRU for rqkmeans and rqvae
+- RQKMeans: 0.329144
+- RQVAE: 0.343622

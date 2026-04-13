@@ -104,10 +104,3 @@ def recommend_top4_cities(
                 outputs.append(recs[:4])
 
     return outputs
-
-
-def compute_top_popular_cities(train_city_series, k: int = 4) -> list[int]:
-    from collections import Counter
-
-    counts = Counter(train_city_series.tolist())
-    return [city_id for city_id, _ in counts.most_common(k)]

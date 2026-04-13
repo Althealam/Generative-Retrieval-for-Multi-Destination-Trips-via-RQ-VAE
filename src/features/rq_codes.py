@@ -1,12 +1,4 @@
-"""Trip sequence preprocessing for RQ-KMeans/RQVAE pipelines.
-
-This module mainly does 5 things:
-1) Aggregate row-level booking records into one row per trip.
-2) Train Word2Vec embeddings for cities.
-3) Build 2-level residual quantization (RQ) city codebook.
-4) Convert trip city sequences into model train/test samples.
-5) Build reverse lookup from code-pair to candidate city ids.
-"""
+"""Word2Vec, RQ codebook, and code-sequence samples for RQ-KMeans / RQVAE."""
 
 from __future__ import annotations
 
@@ -15,53 +7,8 @@ import pandas as pd
 from gensim.models import Word2Vec
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import RobustScaler, normalize
-from src.preprocessing.trip_context import row_to_context_indices
 
-
-def create_trip_sequences(df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregate each `utrip_id` into a chronological city sequence."""
-    data = df.copy()
-    data["checkin"] = pd.to_datetime(data["checkin"])
-    data = data.sort_values(["utrip_id", "checkin"])
-
-    sequences = (
-        data.groupby("utrip_id")
-        .agg({"city_id": list, "hotel_country": "last", "booker_country": "first"})
-        .reset_index()
-    )
-    return sequences
-
-
-def create_multiple_sequences(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    聚合后每行主要有：city_id(list), stay_duration(list), checkin_month, booker_country, device_class
-    将原始数据变成trip级的数据
-    """
-    data = df.copy()
-    data["checkin"] = pd.to_datetime(data["checkin"])
-    data["checkout"] = pd.to_datetime(data["checkout"])
-
-    data["stay_duration"] = (data["checkout"] - data["checkin"]).dt.days
-    data["stay_duration"] = data["stay_duration"].clip(1, 30)
-    data["checkin_month"] = data["checkin"].dt.month
-
-    sequences = data.groupby("utrip_id").agg(
-        {
-            "city_id": list,
-            "hotel_country": list,
-            "stay_duration": list,
-            "checkin_month": "first",
-            "booker_country": "first",
-            "device_class": "first",
-        }
-    ).reset_index()
-
-    return sequences
-
-
-# Backward-compatible alias (old misspelled API).
-def create_mutliple_sequences(df: pd.DataFrame) -> pd.DataFrame:  # pragma: no cover
-    return create_multiple_sequences(df)
+from src.features.context import row_to_context_indices
 
 
 def train_word2vec(
@@ -261,15 +208,3 @@ def build_code_to_cities(
         code_to_cities[code_pair].sort(key=lambda x: city_counts.get(x, 0), reverse=True)
 
     return code_to_cities
-
-
-__all__ = [
-    "create_trip_sequences",
-    "create_multiple_sequences",
-    "create_mutliple_sequences",
-    "train_word2vec",
-    "build_rq_codebook",
-    "build_final_dataset",
-    "build_final_dataset_with_context",
-    "build_code_to_cities",
-]

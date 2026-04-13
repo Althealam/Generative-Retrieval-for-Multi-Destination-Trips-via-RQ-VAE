@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from src.models.rqvae_vector_quantizer import ResidualVectorQuantizer
+from src.models.rqvae.vector_quantizer import ResidualVectorQuantizer
 
 
 class RQVAE(nn.Module):
