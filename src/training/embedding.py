@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-def train_city_transformer(
+def train_embedding_model(
     model: nn.Module,
     train_loader: DataLoader,
     pad_token_id: int = 0,

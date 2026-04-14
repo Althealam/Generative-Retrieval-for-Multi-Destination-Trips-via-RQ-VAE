@@ -74,6 +74,7 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 - RQVAE: 0.343622
 ### 2026/4/14
 * Fix the hidden state problem for both gru and transformer, and it turns out that it improve the performance especially in transformer architecture
+* Add GRU for embedding model
 * Transformer
 - Embedding: 0.482098
 - RQKMeans: 0.306643
@@ -81,3 +82,8 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 * GRU
 - RQKMeans: 0.309035
 - RQVAE: 0.348745
+- Embedding: 0.489117
+* Add choice for hidden state which will be feed into the classification network: CLS/Last Hidden/Mean (this is only for transformer, and now I just implement on embedding model)
+- last: 0.485508
+- CLS: 0.076774
+- mean: 0.485508

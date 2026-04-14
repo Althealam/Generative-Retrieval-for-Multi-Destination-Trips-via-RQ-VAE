@@ -20,8 +20,8 @@ from src.features import (
     build_city_vocab,
     create_multiple_sequences,
 )
-from src.models import CityTransformer
-from src.training.embedding import recommend_top4_cities, train_city_transformer
+from src.models import CityGRU, CityTransformer
+from src.training.embedding import recommend_top4_cities, train_embedding_model
 from src.utils import data_dir, print_accuracy_at_4_report, submission_dir, top_city_ids_from_train
 
 
@@ -40,6 +40,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--topk_candidates", type=int, default=50)
     p.add_argument("--skip_eval", action="store_true", help="Skip Accuracy@4 vs ground truth.")
     p.add_argument("--ground_truth", type=str, default=None, help="Path to ground_truth.csv (default: data/).")
+    p.add_argument("--model", type=str, default='transformer', help="transformer/gru")
+    p.add_argument("--pooling", type=str, default="last", help="last/mean/cls (Transformer only)")
     return p.parse_args()
 
 
@@ -82,6 +84,8 @@ def main() -> None:
     print(
         f"✅ City 数据集完成！训练样本: {len(train_pack.x)} | 测试样本: {len(test_pack.x)} "
         f"| multi_step={args.multi_step}"
+        f"| model={args.model}"
+        f"| pooling={args.pooling}"
     )
 
     train_ctx = (
@@ -114,25 +118,48 @@ def main() -> None:
         train_ctx=train_ctx,
         test_ctx=test_ctx,
     )
-
-    model = CityTransformer(
-        vocab_size=vocab_size,
-        pad_token_id=PAD_TOKEN_ID,
-        d_model=256,
-        nhead=4,
-        num_layers=2,
-        n_booker_countries=n_booker,
-        n_device_classes=n_device,
-    )
-    model = train_city_transformer(
-        model,
-        train_loader,
-        pad_token_id=PAD_TOKEN_ID,
-        epochs=args.epochs,
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        label_smoothing=args.label_smoothing,
-    )
+    
+    model_type = args.model
+    if model_type=='transformer':
+        model = CityTransformer(
+            vocab_size=vocab_size,
+            pad_token_id=PAD_TOKEN_ID,
+            d_model=256,
+            nhead=4,
+            num_layers=2,
+            n_booker_countries=n_booker,
+            n_device_classes=n_device,
+            pooling=args.pooling,
+        )
+        model = train_embedding_model(
+            model,
+            train_loader,
+            pad_token_id=PAD_TOKEN_ID,
+            epochs=args.epochs,
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            label_smoothing=args.label_smoothing,
+        )
+    elif model_type == "gru":
+        model = CityGRU(
+            vocab_size=vocab_size,
+            pad_token_id=PAD_TOKEN_ID,
+            embedding_dim=256,
+            hidden_dim=256,
+            n_booker_countries=n_booker,
+            n_device_classes=n_device,
+        )
+        model = train_embedding_model(
+            model,
+            train_loader,
+            pad_token_id=PAD_TOKEN_ID,
+            epochs=args.epochs,
+            lr=args.lr,
+            weight_decay=args.weight_decay,
+            label_smoothing=args.label_smoothing,
+        )
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
 
     top_popular = top_city_ids_from_train(train_set, k=4)
     predictions = recommend_top4_cities(

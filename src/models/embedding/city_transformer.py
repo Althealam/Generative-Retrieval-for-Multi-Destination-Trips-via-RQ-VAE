@@ -19,12 +19,19 @@ class CityTransformer(nn.Module):
         max_len: int = 256,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
+        pooling: str = "last",
     ):
         super().__init__()
+        if pooling not in {"last", "mean", "cls"}:
+            raise ValueError(f"Unsupported pooling: {pooling}")
         self.d_model = d_model
         self.pad_token_id = pad_token_id
+        self.pooling = pooling
+        self.vocab_size = vocab_size
+        self.cls_token_id = vocab_size
 
-        self.embedding = nn.Embedding(vocab_size, d_model, padding_idx=pad_token_id)
+        # Reserve one extra input token for optional CLS pooling.
+        self.embedding = nn.Embedding(vocab_size + 1, d_model, padding_idx=pad_token_id)
         self.pos_encoder = PositionalEncoding(d_model=d_model, max_len=max_len)
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -69,16 +76,32 @@ class CityTransformer(nn.Module):
         last_stay_idx: torch.Tensor,
         same_country_streak_idx: torch.Tensor,
     ) -> torch.Tensor:
+        if self.pooling == "cls":
+            cls_col = torch.full(
+                (x.size(0), 1),
+                fill_value=self.cls_token_id,
+                device=x.device,
+                dtype=x.dtype,
+            )
+            x = torch.cat([cls_col, x], dim=1)
+
         padding_mask = x.eq(self.pad_token_id)
         causal_mask = self._generate_causal_mask(x.size(1), x.device)
 
         h = self.embedding(x) * math.sqrt(self.d_model)
         h = self.pos_encoder(h)
         h = self.transformer(h, mask=causal_mask, src_key_padding_mask=padding_mask)
-        # Pool from each sequence's last valid (non-pad) token.
-        valid_lengths = (~padding_mask).sum(dim=1).clamp(min=1)
-        last_indices = (valid_lengths - 1).unsqueeze(1).unsqueeze(2).expand(-1, 1, h.size(2))
-        last_hidden = h.gather(dim=1, index=last_indices).squeeze(1)
+        if self.pooling == "last":
+            valid_lengths = (~padding_mask).sum(dim=1).clamp(min=1)
+            last_indices = (valid_lengths - 1).unsqueeze(1).unsqueeze(2).expand(-1, 1, h.size(2))
+            seq_hidden = h.gather(dim=1, index=last_indices).squeeze(1)
+        elif self.pooling == "mean":
+            valid_mask = (~padding_mask).unsqueeze(-1).to(h.dtype)
+            masked_h = h * valid_mask
+            valid_counts = valid_mask.sum(dim=1).clamp(min=1.0)
+            seq_hidden = masked_h.sum(dim=1) / valid_counts
+        else:  # cls
+            seq_hidden = h[:, 0, :]
 
         ctx = torch.cat(
             [
@@ -94,6 +117,6 @@ class CityTransformer(nn.Module):
             ],
             dim=-1,
         )
-        last_hidden = last_hidden + self.ctx_proj(ctx)
+        seq_hidden = seq_hidden + self.ctx_proj(ctx)
 
-        return self.classifier(last_hidden)
+        return self.classifier(seq_hidden)
