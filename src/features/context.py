@@ -14,6 +14,18 @@ def build_booker_device_vocabs(train_trips: pd.DataFrame) -> tuple[dict[str, int
     return booker_to_idx, device_to_idx, len(countries), len(devices)
 
 
+def build_hotel_country_vocab(train_trips: pd.DataFrame) -> tuple[dict[str, int], int]:
+    countries: set[str] = set()
+    for values in train_trips["hotel_country"].tolist():
+        if isinstance(values, list):
+            for country in values:
+                if pd.notna(country):
+                    countries.add(str(country))
+    sorted_countries = sorted(countries)
+    country_to_idx = {country: i + 1 for i, country in enumerate(sorted_countries)}
+    return country_to_idx, len(sorted_countries)
+
+
 def _bucket_trip_len(n: int) -> int:
     return max(1, min(30, int(n)))
 
@@ -106,4 +118,45 @@ def row_to_context_indices(
         repeat_ratio_idx,
         last_stay_idx,
         same_country_streak_idx,
+    )
+
+
+def row_to_spatial_indices(
+    row: pd.Series,
+    hotel_country_to_idx: dict[str, int],
+    *,
+    prefix_len: int | None = None,
+) -> tuple[int, int, int, int]:
+    countries_raw = row["hotel_country"] if isinstance(row.get("hotel_country"), list) else []
+    countries = [str(c) for c in countries_raw if pd.notna(c)]
+    if prefix_len is None:
+        prefix_len = len(countries)
+    prefix_len = max(1, min(int(prefix_len), len(countries) if len(countries) > 0 else 1))
+    countries_prefix = countries[:prefix_len]
+
+    if countries_prefix:
+        last_country_idx = hotel_country_to_idx.get(countries_prefix[-1], 0)
+    else:
+        last_country_idx = 0
+
+    unique_country_count = len(set(countries_prefix)) if countries_prefix else 1
+    unique_country_idx = _bucket_trip_len(unique_country_count)
+
+    if len(countries_prefix) <= 1:
+        cross_border_count = 0
+    else:
+        cross_border_count = sum(
+            1 for i in range(1, len(countries_prefix)) if countries_prefix[i] != countries_prefix[i - 1]
+        )
+    cross_border_count_idx = max(0, min(30, int(cross_border_count)))
+
+    denom = max(1, len(countries_prefix) - 1)
+    cross_border_ratio = cross_border_count / denom
+    cross_border_ratio_idx = max(0, min(10, int(round(cross_border_ratio * 10))))
+
+    return (
+        last_country_idx,
+        unique_country_idx,
+        cross_border_count_idx,
+        cross_border_ratio_idx,
     )

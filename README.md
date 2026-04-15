@@ -87,3 +87,8 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
     - last: 0.485508
     - CLS: 0.076774
     - mean: 0.485508
+### 2026/4/15
+* Add geograpy features into the embedding, rqvae, rqkmeans model. The features are: last_hotel_country, unique_hotel_countries, cross_border_count, cross_border_ratio. And the performance are like:
+    - Embedding with transformer: 0.487093
+    - RQVAE with transformer: 0.338428
+    - RQKMeans with transformer: 0.290920

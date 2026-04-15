@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 from src.datasets import PAD_TOKEN_ID, UNK_TOKEN_ID, build_city_dataloaders
 from src.features import (
     build_booker_device_vocabs,
+    build_hotel_country_vocab,
     build_city_sequence_pack,
     build_city_vocab,
     create_multiple_sequences,
@@ -63,6 +64,7 @@ def main() -> None:
     vocab_size = len(city_to_idx) + 2
 
     booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    hotel_country_to_idx, n_hotel_country = build_hotel_country_vocab(train_trips)
 
     train_pack = build_city_sequence_pack(
         train_trips,
@@ -71,6 +73,7 @@ def main() -> None:
         multi_step=args.multi_step,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        hotel_country_to_idx=hotel_country_to_idx,
     )
     test_pack = build_city_sequence_pack(
         test_trips,
@@ -79,6 +82,7 @@ def main() -> None:
         multi_step=False,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        hotel_country_to_idx=hotel_country_to_idx,
     )
 
     print(
@@ -98,6 +102,10 @@ def main() -> None:
         train_pack.ctx_repeat_city_ratio,
         train_pack.ctx_last_stay_days,
         train_pack.ctx_same_country_streak,
+        train_pack.ctx_last_hotel_country,
+        train_pack.ctx_unique_hotel_countries,
+        train_pack.ctx_cross_border_count,
+        train_pack.ctx_cross_border_ratio,
     )
     test_ctx = (
         test_pack.ctx_booker,
@@ -109,6 +117,10 @@ def main() -> None:
         test_pack.ctx_repeat_city_ratio,
         test_pack.ctx_last_stay_days,
         test_pack.ctx_same_country_streak,
+        test_pack.ctx_last_hotel_country,
+        test_pack.ctx_unique_hotel_countries,
+        test_pack.ctx_cross_border_count,
+        test_pack.ctx_cross_border_ratio,
     )
     train_loader, test_loader = build_city_dataloaders(
         train_pack.x,
@@ -129,6 +141,7 @@ def main() -> None:
             num_layers=2,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_hotel_countries=n_hotel_country,
             pooling=args.pooling,
         )
         model = train_embedding_model(
@@ -148,6 +161,7 @@ def main() -> None:
             hidden_dim=256,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_hotel_countries=n_hotel_country,
         )
         model = train_embedding_model(
             model,

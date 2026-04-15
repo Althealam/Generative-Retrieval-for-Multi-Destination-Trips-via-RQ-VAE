@@ -19,6 +19,7 @@ class CityTransformer(nn.Module):
         max_len: int = 256,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
+        n_hotel_countries: int = 0,
         pooling: str = "last",
     ):
         super().__init__()
@@ -52,7 +53,11 @@ class CityTransformer(nn.Module):
         self.emb_repeat_ratio = nn.Embedding(11, 24)
         self.emb_last_stay = nn.Embedding(31, 32)
         self.emb_same_country_streak = nn.Embedding(31, 32)
-        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32
+        self.emb_last_hotel_country = nn.Embedding(n_hotel_countries + 1, 64, padding_idx=0)
+        self.emb_unique_hotel_countries = nn.Embedding(31, 32)
+        self.emb_cross_border_count = nn.Embedding(31, 32)
+        self.emb_cross_border_ratio = nn.Embedding(11, 24)
+        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24
         self.ctx_proj = nn.Linear(ctx_dim, d_model)
 
         self.classifier = nn.Linear(d_model, vocab_size)
@@ -75,6 +80,10 @@ class CityTransformer(nn.Module):
         repeat_ratio_idx: torch.Tensor,
         last_stay_idx: torch.Tensor,
         same_country_streak_idx: torch.Tensor,
+        last_hotel_country_idx: torch.Tensor,
+        unique_hotel_countries_idx: torch.Tensor,
+        cross_border_count_idx: torch.Tensor,
+        cross_border_ratio_idx: torch.Tensor,
     ) -> torch.Tensor:
         if self.pooling == "cls":
             cls_col = torch.full(
@@ -114,6 +123,10 @@ class CityTransformer(nn.Module):
                 self.emb_repeat_ratio(repeat_ratio_idx),
                 self.emb_last_stay(last_stay_idx),
                 self.emb_same_country_streak(same_country_streak_idx),
+                self.emb_last_hotel_country(last_hotel_country_idx),
+                self.emb_unique_hotel_countries(unique_hotel_countries_idx),
+                self.emb_cross_border_count(cross_border_count_idx),
+                self.emb_cross_border_ratio(cross_border_ratio_idx),
             ],
             dim=-1,
         )

@@ -14,6 +14,7 @@ class RQVAEGRU(nn.Module):
         codebook_size: int = 128,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
+        n_hotel_countries: int = 0,
     ):
         super().__init__()
         self.codebook_size = codebook_size
@@ -34,7 +35,11 @@ class RQVAEGRU(nn.Module):
         self.emb_repeat_ratio = nn.Embedding(11, 24)
         self.emb_last_stay = nn.Embedding(31, 32)
         self.emb_same_country_streak = nn.Embedding(31, 32)
-        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32
+        self.emb_last_hotel_country = nn.Embedding(n_hotel_countries + 1, 64, padding_idx=0)
+        self.emb_unique_hotel_countries = nn.Embedding(31, 32)
+        self.emb_cross_border_count = nn.Embedding(31, 32)
+        self.emb_cross_border_ratio = nn.Embedding(11, 24)
+        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24
         self.ctx_proj = nn.Linear(ctx_dim, hidden_dim)
 
         self.fc_code1 = nn.Linear(hidden_dim, codebook_size)
@@ -52,6 +57,10 @@ class RQVAEGRU(nn.Module):
         repeat_ratio_idx,
         last_stay_idx,
         same_country_streak_idx,
+        last_hotel_country_idx,
+        unique_hotel_countries_idx,
+        cross_border_count_idx,
+        cross_border_ratio_idx,
     ):
         lengths = x.ne(self.pad_token).sum(dim=1).clamp(min=1).cpu()
         embeds = self.embedding(x)
@@ -69,6 +78,10 @@ class RQVAEGRU(nn.Module):
                 self.emb_repeat_ratio(repeat_ratio_idx),
                 self.emb_last_stay(last_stay_idx),
                 self.emb_same_country_streak(same_country_streak_idx),
+                self.emb_last_hotel_country(last_hotel_country_idx),
+                self.emb_unique_hotel_countries(unique_hotel_countries_idx),
+                self.emb_cross_border_count(cross_border_count_idx),
+                self.emb_cross_border_ratio(cross_border_ratio_idx),
             ],
             dim=-1,
         )

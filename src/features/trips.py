@@ -27,6 +27,7 @@ def create_multiple_sequences(df: pd.DataFrame) -> pd.DataFrame:
     data = df.copy()
     data["checkin"] = pd.to_datetime(data["checkin"])
     data["checkout"] = pd.to_datetime(data["checkout"])
+    data = data.sort_values(["utrip_id", "checkin"])
 
     data["stay_duration"] = (data["checkout"] - data["checkin"]).dt.days
     data["stay_duration"] = data["stay_duration"].clip(1, 30)

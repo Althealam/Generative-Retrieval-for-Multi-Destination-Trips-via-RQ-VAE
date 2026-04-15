@@ -8,7 +8,7 @@ from gensim.models import Word2Vec
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import RobustScaler, normalize
 
-from src.features.context import row_to_context_indices
+from src.features.context import row_to_context_indices, row_to_spatial_indices
 
 
 def train_word2vec(
@@ -117,11 +117,16 @@ def build_final_dataset_with_context(
     *,
     booker_to_idx: dict[str, int],
     device_to_idx: dict[str, int],
+    hotel_country_to_idx: dict[str, int],
     is_test: bool = False,
     multi_step: bool = False,
 ) -> tuple[
     list[list[int]],
     list[list[int]],
+    list[int],
+    list[int],
+    list[int],
+    list[int],
     list[int],
     list[int],
     list[int],
@@ -144,15 +149,22 @@ def build_final_dataset_with_context(
     crr: list[int] = []
     cls: list[int] = []
     csc: list[int] = []
+    clc: list[int] = []
+    cuc: list[int] = []
+    cbc: list[int] = []
+    cbr: list[int] = []
 
     for _, row in trip_df.iterrows():
         cities = row["city_id"]
         full_code_seq = _city_to_code_sequence(cities, mapping)
-        b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-            row, booker_to_idx, device_to_idx
-        )
-
         if is_test:
+            prefix_len = max(1, len(cities) - 1)
+            b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+            )
+            lc, uc, bc, br = row_to_spatial_indices(
+                row, hotel_country_to_idx, prefix_len=prefix_len
+            )
             x_values.append(full_code_seq[:-2])
             cb.append(b)
             cd.append(d)
@@ -163,11 +175,21 @@ def build_final_dataset_with_context(
             crr.append(rr)
             cls.append(ls)
             csc.append(sc)
+            clc.append(lc)
+            cuc.append(uc)
+            cbc.append(bc)
+            cbr.append(br)
         elif multi_step:
             n = len(cities)
             if n < 2:
                 continue
             for k in range(1, n):
+                b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                    row, booker_to_idx, device_to_idx, prefix_len=k
+                )
+                lc, uc, bc, br = row_to_spatial_indices(
+                    row, hotel_country_to_idx, prefix_len=k
+                )
                 x_values.append(full_code_seq[: 2 * k])
                 y_values.append(full_code_seq[2 * k : 2 * k + 2])
                 cb.append(b)
@@ -179,8 +201,19 @@ def build_final_dataset_with_context(
                 crr.append(rr)
                 cls.append(ls)
                 csc.append(sc)
+                clc.append(lc)
+                cuc.append(uc)
+                cbc.append(bc)
+                cbr.append(br)
         else:
             if len(full_code_seq) >= 4:
+                prefix_len = len(cities) - 1
+                b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                    row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+                )
+                lc, uc, bc, br = row_to_spatial_indices(
+                    row, hotel_country_to_idx, prefix_len=prefix_len
+                )
                 x_values.append(full_code_seq[:-2])
                 y_values.append(full_code_seq[-2:])
                 cb.append(b)
@@ -192,8 +225,12 @@ def build_final_dataset_with_context(
                 crr.append(rr)
                 cls.append(ls)
                 csc.append(sc)
+                clc.append(lc)
+                cuc.append(uc)
+                cbc.append(bc)
+                cbr.append(br)
 
-    return x_values, y_values, cb, cd, cm, cs, ctl, cnu, crr, cls, csc
+    return x_values, y_values, cb, cd, cm, cs, ctl, cnu, crr, cls, csc, clc, cuc, cbc, cbr
 
 
 def build_code_to_cities(
