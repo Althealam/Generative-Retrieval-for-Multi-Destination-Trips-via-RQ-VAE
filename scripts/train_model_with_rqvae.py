@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 
 from src.datasets import build_dataloaders
 from src.features import (
-    build_booker_device_vocabs,
+    build_booker_device_affiliate_vocabs,
     build_hotel_country_vocab,
     build_code_to_cities,
     build_final_dataset_with_context,
@@ -78,7 +78,9 @@ def main() -> None:
     train_trips = create_multiple_sequences(train_set)
     test_trips = create_multiple_sequences(test_set)
 
-    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    booker_to_idx, device_to_idx, affiliate_to_idx, n_booker, n_device, n_affiliate = (
+        build_booker_device_affiliate_vocabs(train_trips)
+    )
     hotel_country_to_idx, n_hotel_country = build_hotel_country_vocab(train_trips)
 
     train_parts = build_final_dataset_with_context(
@@ -86,6 +88,7 @@ def main() -> None:
         city_to_codes,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
         is_test=False,
         multi_step=args.multi_step,
@@ -97,6 +100,7 @@ def main() -> None:
         city_to_codes,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
         is_test=True,
     )
@@ -126,6 +130,7 @@ def main() -> None:
             dim_feedforward=512,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
         )
     elif model_type == "gru":
@@ -135,6 +140,7 @@ def main() -> None:
             hidden_dim=128,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
         )
     else:

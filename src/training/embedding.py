@@ -31,6 +31,7 @@ def train_embedding_model(
                 batch_y,
                 b_b,
                 b_d,
+                b_a,
                 b_m,
                 b_s,
                 b_tl,
@@ -47,6 +48,7 @@ def train_embedding_model(
             batch_y = batch_y.to(device)
             b_b = b_b.to(device)
             b_d = b_d.to(device)
+            b_a = b_a.to(device)
             b_m = b_m.to(device)
             b_s = b_s.to(device)
             b_tl = b_tl.to(device)
@@ -59,7 +61,7 @@ def train_embedding_model(
             b_bc = b_bc.to(device)
             b_br = b_br.to(device)
             optimizer.zero_grad()
-            logits = model(batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
+            logits = model(batch_x, b_b, b_d, b_a, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
 
             loss = criterion(logits, batch_y)
             loss.backward()
@@ -95,6 +97,7 @@ def recommend_top4_cities(
                 batch_x,
                 b_b,
                 b_d,
+                b_a,
                 b_m,
                 b_s,
                 b_tl,
@@ -110,6 +113,7 @@ def recommend_top4_cities(
             batch_x = batch_x.to(device)
             b_b = b_b.to(device)
             b_d = b_d.to(device)
+            b_a = b_a.to(device)
             b_m = b_m.to(device)
             b_s = b_s.to(device)
             b_tl = b_tl.to(device)
@@ -121,7 +125,7 @@ def recommend_top4_cities(
             b_uc = b_uc.to(device)
             b_bc = b_bc.to(device)
             b_br = b_br.to(device)
-            logits = model(batch_x, b_b, b_d, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
+            logits = model(batch_x, b_b, b_d, b_a, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
 
             probs = torch.softmax(logits, dim=1)
             _, top_indices = torch.topk(probs, k=min(topk_candidates, probs.size(1)), dim=1)

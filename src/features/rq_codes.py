@@ -117,6 +117,7 @@ def build_final_dataset_with_context(
     *,
     booker_to_idx: dict[str, int],
     device_to_idx: dict[str, int],
+    affiliate_to_idx: dict[str, int],
     hotel_country_to_idx: dict[str, int],
     is_test: bool = False,
     multi_step: bool = False,
@@ -136,12 +137,14 @@ def build_final_dataset_with_context(
     list[int],
     list[int],
     list[int],
+    list[int],
 ]:
     """Build code-sequence samples and aligned trip context features."""
     x_values: list[list[int]] = []
     y_values: list[list[int]] = []
     cb: list[int] = []
     cd: list[int] = []
+    ca: list[int] = []
     cm: list[int] = []
     cs: list[int] = []
     ctl: list[int] = []
@@ -159,8 +162,8 @@ def build_final_dataset_with_context(
         full_code_seq = _city_to_code_sequence(cities, mapping)
         if is_test:
             prefix_len = max(1, len(cities) - 1)
-            b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+            b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
             )
             lc, uc, bc, br = row_to_spatial_indices(
                 row, hotel_country_to_idx, prefix_len=prefix_len
@@ -168,6 +171,7 @@ def build_final_dataset_with_context(
             x_values.append(full_code_seq[:-2])
             cb.append(b)
             cd.append(d)
+            ca.append(a)
             cm.append(m)
             cs.append(s)
             ctl.append(tl)
@@ -184,8 +188,8 @@ def build_final_dataset_with_context(
             if n < 2:
                 continue
             for k in range(1, n):
-                b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                    row, booker_to_idx, device_to_idx, prefix_len=k
+                b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                    row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=k
                 )
                 lc, uc, bc, br = row_to_spatial_indices(
                     row, hotel_country_to_idx, prefix_len=k
@@ -194,6 +198,7 @@ def build_final_dataset_with_context(
                 y_values.append(full_code_seq[2 * k : 2 * k + 2])
                 cb.append(b)
                 cd.append(d)
+                ca.append(a)
                 cm.append(m)
                 cs.append(s)
                 ctl.append(tl)
@@ -208,8 +213,8 @@ def build_final_dataset_with_context(
         else:
             if len(full_code_seq) >= 4:
                 prefix_len = len(cities) - 1
-                b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                    row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+                b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                    row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
                 )
                 lc, uc, bc, br = row_to_spatial_indices(
                     row, hotel_country_to_idx, prefix_len=prefix_len
@@ -218,6 +223,7 @@ def build_final_dataset_with_context(
                 y_values.append(full_code_seq[-2:])
                 cb.append(b)
                 cd.append(d)
+                ca.append(a)
                 cm.append(m)
                 cs.append(s)
                 ctl.append(tl)
@@ -230,7 +236,7 @@ def build_final_dataset_with_context(
                 cbc.append(bc)
                 cbr.append(br)
 
-    return x_values, y_values, cb, cd, cm, cs, ctl, cnu, crr, cls, csc, clc, cuc, cbc, cbr
+    return x_values, y_values, cb, cd, ca, cm, cs, ctl, cnu, crr, cls, csc, clc, cuc, cbc, cbr
 
 
 def build_code_to_cities(

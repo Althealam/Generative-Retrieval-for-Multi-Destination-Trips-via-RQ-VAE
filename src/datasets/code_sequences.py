@@ -22,6 +22,7 @@ class CityCodeDataset(Dataset):
         *,
         ctx_booker: list[int],
         ctx_device: list[int],
+        ctx_affiliate: list[int],
         ctx_month: list[int],
         ctx_stay: list[int],
         ctx_trip_len: list[int],
@@ -38,6 +39,7 @@ class CityCodeDataset(Dataset):
         self.y_values = torch.tensor(y_values, dtype=torch.long) if y_values is not None else None
         self.ctx_booker = torch.tensor(ctx_booker, dtype=torch.long)
         self.ctx_device = torch.tensor(ctx_device, dtype=torch.long)
+        self.ctx_affiliate = torch.tensor(ctx_affiliate, dtype=torch.long)
         self.ctx_month = torch.tensor(ctx_month, dtype=torch.long)
         self.ctx_stay = torch.tensor(ctx_stay, dtype=torch.long)
         self.ctx_trip_len = torch.tensor(ctx_trip_len, dtype=torch.long)
@@ -60,6 +62,7 @@ class CityCodeDataset(Dataset):
                 self.y_values[idx],
                 self.ctx_booker[idx],
                 self.ctx_device[idx],
+                self.ctx_affiliate[idx],
                 self.ctx_month[idx],
                 self.ctx_stay[idx],
                 self.ctx_trip_len[idx],
@@ -76,6 +79,7 @@ class CityCodeDataset(Dataset):
             self.x_values[idx],
             self.ctx_booker[idx],
             self.ctx_device[idx],
+            self.ctx_affiliate[idx],
             self.ctx_month[idx],
             self.ctx_stay[idx],
             self.ctx_trip_len[idx],
@@ -93,14 +97,15 @@ class CityCodeDataset(Dataset):
 def _make_collate_code(pad_token: int):
     def collate_fn(batch):
         n_fields = len(batch[0])
-        if n_fields == 15:
-            xs, ys, bs, ds, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+        if n_fields == 16:
+            xs, ys, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
             xs_padded = pad_sequence(xs, batch_first=True, padding_value=pad_token)
             return (
                 xs_padded,
                 torch.stack(ys),
                 torch.stack(bs),
                 torch.stack(ds),
+                torch.stack(afs),
                 torch.stack(ms),
                 torch.stack(ss),
                 torch.stack(tls),
@@ -113,13 +118,14 @@ def _make_collate_code(pad_token: int):
                 torch.stack(bcs),
                 torch.stack(brs),
             )
-        if n_fields == 14:
-            xs, bs, ds, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+        if n_fields == 15:
+            xs, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
             xs_padded = pad_sequence(xs, batch_first=True, padding_value=pad_token)
             return (
                 xs_padded,
                 torch.stack(bs),
                 torch.stack(ds),
+                torch.stack(afs),
                 torch.stack(ms),
                 torch.stack(ss),
                 torch.stack(tls),
@@ -158,6 +164,8 @@ def build_dataloaders(
         list[int],
         list[int],
         list[int],
+        list[int],
+        list[int],
     ],
     test_ctx: tuple[
         list[int],
@@ -175,13 +183,14 @@ def build_dataloaders(
         list[int],
     ],
 ) -> tuple[DataLoader, DataLoader]:
-    tb, td, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr = train_ctx
-    eb, ed, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr = test_ctx
+    tb, td, ta, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr = train_ctx
+    eb, ed, ea, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr = test_ctx
     train_dataset = CityCodeDataset(
         train_x,
         train_y,
         ctx_booker=tb,
         ctx_device=td,
+        ctx_affiliate=ta,
         ctx_month=tm,
         ctx_stay=ts,
         ctx_trip_len=ttl,
@@ -198,6 +207,7 @@ def build_dataloaders(
         test_x,
         ctx_booker=eb,
         ctx_device=ed,
+        ctx_affiliate=ea,
         ctx_month=em,
         ctx_stay=es,
         ctx_trip_len=etl,

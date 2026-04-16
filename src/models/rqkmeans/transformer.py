@@ -19,6 +19,7 @@ class RQKMeansTransformer(nn.Module):
         pad_code: int = 32,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
+        n_affiliates: int = 0,
         n_hotel_countries: int = 0,
     ):
         super().__init__()
@@ -39,6 +40,7 @@ class RQKMeansTransformer(nn.Module):
 
         self.emb_booker = nn.Embedding(n_booker_countries + 1, 64, padding_idx=0)
         self.emb_device = nn.Embedding(n_device_classes + 1, 48, padding_idx=0)
+        self.emb_affiliate = nn.Embedding(n_affiliates + 1, 48, padding_idx=0)
         self.emb_month = nn.Embedding(13, 32)
         self.emb_stay = nn.Embedding(31, 48)
         self.emb_trip_len = nn.Embedding(31, 32)
@@ -50,7 +52,7 @@ class RQKMeansTransformer(nn.Module):
         self.emb_unique_hotel_countries = nn.Embedding(31, 32)
         self.emb_cross_border_count = nn.Embedding(31, 32)
         self.emb_cross_border_ratio = nn.Embedding(11, 24)
-        self.ctx_proj = nn.Linear(64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24, d_model)
+        self.ctx_proj = nn.Linear(64 + 48 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24, d_model)
 
         self.fc_code1 = nn.Linear(d_model, codebook_size)
         self.fc_code2 = nn.Linear(d_model, codebook_size)
@@ -66,6 +68,7 @@ class RQKMeansTransformer(nn.Module):
         x,
         booker_idx,
         device_idx,
+        affiliate_idx,
         month_idx,
         stay_idx,
         trip_len_idx,
@@ -95,6 +98,7 @@ class RQKMeansTransformer(nn.Module):
             [
                 self.emb_booker(booker_idx),
                 self.emb_device(device_idx),
+                self.emb_affiliate(affiliate_idx),
                 self.emb_month(month_idx),
                 self.emb_stay(stay_idx),
                 self.emb_trip_len(trip_len_idx),

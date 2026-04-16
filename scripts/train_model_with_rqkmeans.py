@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 
 from src.datasets import DEFAULT_CODE_PAD_TOKEN, build_dataloaders
 from src.features import (
-    build_booker_device_vocabs,
+    build_booker_device_affiliate_vocabs,
     build_hotel_country_vocab,
     build_code_to_cities,
     build_final_dataset_with_context,
@@ -61,7 +61,9 @@ def main() -> None:
     print("正在构建 RQ 语义索引 (Residual Quantization)...")
     city_to_codes = build_rq_codebook(train_set, w2v, n_clusters=N_CLUSTERS, random_state=42)
     
-    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    booker_to_idx, device_to_idx, affiliate_to_idx, n_booker, n_device, n_affiliate = (
+        build_booker_device_affiliate_vocabs(train_trips)
+    )
     hotel_country_to_idx, n_hotel_country = build_hotel_country_vocab(train_trips)
 
     train_parts = build_final_dataset_with_context(
@@ -69,6 +71,7 @@ def main() -> None:
         city_to_codes,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
         is_test=False,
         multi_step=args.multi_step,
@@ -80,6 +83,7 @@ def main() -> None:
         city_to_codes,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
         is_test=True,
     )
@@ -102,12 +106,14 @@ def main() -> None:
         model = RQKMeansTransformer(
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
         )
     elif model_type == "gru":
         model = RQKmeansGRU(
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
             codebook_size=N_CLUSTERS,
         )

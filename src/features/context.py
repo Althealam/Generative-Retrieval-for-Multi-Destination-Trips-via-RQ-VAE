@@ -6,12 +6,44 @@ import numpy as np
 import pandas as pd
 
 
+def build_booker_device_affiliate_vocabs(
+    train_trips: pd.DataFrame,
+) -> tuple[dict[str, int], dict[str, int], dict[str, int], int, int, int]:
+    countries: set[str] = set()
+    for values in train_trips["booker_country"].tolist():
+        if isinstance(values, list):
+            for country in values:
+                if pd.notna(country):
+                    countries.add(str(country))
+        elif pd.notna(values):
+            countries.add(str(values))
+    devices: set[str] = set()
+    for values in train_trips["device_class"].tolist():
+        if isinstance(values, list):
+            for device in values:
+                if pd.notna(device):
+                    devices.add(str(device))
+        elif pd.notna(values):
+            devices.add(str(values))
+    affiliates: set[str] = set()
+    for values in train_trips["affiliate_id"].tolist():
+        if isinstance(values, list):
+            for affiliate in values:
+                if pd.notna(affiliate):
+                    affiliates.add(str(affiliate))
+        elif pd.notna(values):
+            affiliates.add(str(values))
+    booker_to_idx = {c: i + 1 for i, c in enumerate(sorted(countries))}
+    device_to_idx = {d: i + 1 for i, d in enumerate(sorted(devices))}
+    affiliate_to_idx = {a: i + 1 for i, a in enumerate(sorted(affiliates))}
+    return booker_to_idx, device_to_idx, affiliate_to_idx, len(countries), len(devices), len(affiliates)
+
+
 def build_booker_device_vocabs(train_trips: pd.DataFrame) -> tuple[dict[str, int], dict[str, int], int, int]:
-    countries = sorted(train_trips["booker_country"].dropna().astype(str).unique().tolist())
-    devices = sorted(train_trips["device_class"].dropna().astype(str).unique().tolist())
-    booker_to_idx = {c: i + 1 for i, c in enumerate(countries)}
-    device_to_idx = {d: i + 1 for i, d in enumerate(devices)}
-    return booker_to_idx, device_to_idx, len(countries), len(devices)
+    booker_to_idx, device_to_idx, _affiliate_to_idx, n_booker, n_device, _n_affiliate = (
+        build_booker_device_affiliate_vocabs(train_trips)
+    )
+    return booker_to_idx, device_to_idx, n_booker, n_device
 
 
 def build_hotel_country_vocab(train_trips: pd.DataFrame) -> tuple[dict[str, int], int]:
@@ -51,19 +83,10 @@ def row_to_context_indices(
     row: pd.Series,
     booker_to_idx: dict[str, int],
     device_to_idx: dict[str, int],
+    affiliate_to_idx: dict[str, int],
     *,
     prefix_len: int | None = None,
-) -> tuple[int, int, int, int, int, int, int, int, int]:
-    booker = booker_to_idx.get(str(row["booker_country"]), 0) if pd.notna(row["booker_country"]) else 0
-    device = device_to_idx.get(str(row["device_class"]), 0) if pd.notna(row["device_class"]) else 0
-
-    m = row["checkin_month"]
-    if pd.isna(m):
-        month_idx = 0
-    else:
-        mi = int(m)
-        month_idx = mi if 1 <= mi <= 12 else 0
-
+) -> tuple[int, int, int, int, int, int, int, int, int, int]:
     durs_raw = row["stay_duration"]
     if isinstance(durs_raw, (list, np.ndarray)):
         durs = list(durs_raw)
@@ -75,6 +98,14 @@ def row_to_context_indices(
 
     countries_raw = row["hotel_country"] if isinstance(row.get("hotel_country"), list) else []
     countries = [str(c) for c in countries_raw if pd.notna(c)]
+    bookers_raw = row["booker_country"] if isinstance(row.get("booker_country"), list) else []
+    bookers = [str(b) for b in bookers_raw if pd.notna(b)]
+    devices_raw = row["device_class"] if isinstance(row.get("device_class"), list) else []
+    devices = [str(d) for d in devices_raw if pd.notna(d)]
+    affiliates_raw = row["affiliate_id"] if isinstance(row.get("affiliate_id"), list) else []
+    affiliates = [str(a) for a in affiliates_raw if pd.notna(a)]
+    months_raw = row["checkin_month"] if isinstance(row.get("checkin_month"), list) else []
+    months = [int(m) for m in months_raw if pd.notna(m)]
 
     # Prevent future leakage: use only prefix information for this sample.
     if prefix_len is None:
@@ -84,6 +115,31 @@ def row_to_context_indices(
     cities_prefix = cities[:prefix_len]
     durs_prefix = durs[:prefix_len]
     countries_prefix = countries[:prefix_len]
+    bookers_prefix = bookers[:prefix_len]
+    devices_prefix = devices[:prefix_len]
+    affiliates_prefix = affiliates[:prefix_len]
+    months_prefix = months[:prefix_len]
+    if bookers_prefix:
+        booker = booker_to_idx.get(bookers_prefix[-1], 0)
+    else:
+        booker_raw = row.get("booker_country")
+        booker = booker_to_idx.get(str(booker_raw), 0) if pd.notna(booker_raw) else 0
+    if devices_prefix:
+        device = device_to_idx.get(devices_prefix[-1], 0)
+    else:
+        device_raw = row.get("device_class")
+        device = device_to_idx.get(str(device_raw), 0) if pd.notna(device_raw) else 0
+    affiliate_idx = affiliate_to_idx.get(affiliates_prefix[-1], 0) if affiliates_prefix else 0
+    if months_prefix:
+        last_month = int(months_prefix[-1])
+        month_idx = last_month if 1 <= last_month <= 12 else 0
+    else:
+        month_raw = row.get("checkin_month")
+        if pd.isna(month_raw):
+            month_idx = 0
+        else:
+            mi = int(month_raw)
+            month_idx = mi if 1 <= mi <= 12 else 0
 
     if len(durs_prefix) > 0:
         mean_stay = int(round(float(np.mean(durs_prefix))))
@@ -111,6 +167,7 @@ def row_to_context_indices(
     return (
         booker,
         device,
+        affiliate_idx,
         month_idx,
         stay_idx,
         trip_len_idx,

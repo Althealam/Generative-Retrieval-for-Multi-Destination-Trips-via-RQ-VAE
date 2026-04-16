@@ -4,7 +4,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, Dataset
 
-from src.datasets.tokens import PAD_TOKEN_ID, UNK_TOKEN_ID
+from src.datasets.tokens import PAD_TOKEN_ID
 
 
 class CitySequenceDataset(Dataset):
@@ -15,6 +15,7 @@ class CitySequenceDataset(Dataset):
         *,
         ctx_booker: list[int],
         ctx_device: list[int],
+        ctx_affiliate: list[int],
         ctx_month: list[int],
         ctx_stay: list[int],
         ctx_trip_len: list[int],
@@ -31,6 +32,7 @@ class CitySequenceDataset(Dataset):
         self.y_values = torch.tensor(y_values, dtype=torch.long) if y_values is not None else None
         self.ctx_booker = torch.tensor(ctx_booker, dtype=torch.long)
         self.ctx_device = torch.tensor(ctx_device, dtype=torch.long)
+        self.ctx_affiliate = torch.tensor(ctx_affiliate, dtype=torch.long)
         self.ctx_month = torch.tensor(ctx_month, dtype=torch.long)
         self.ctx_stay = torch.tensor(ctx_stay, dtype=torch.long)
         self.ctx_trip_len = torch.tensor(ctx_trip_len, dtype=torch.long)
@@ -52,6 +54,7 @@ class CitySequenceDataset(Dataset):
                 self.x_values[idx],
                 self.ctx_booker[idx],
                 self.ctx_device[idx],
+                self.ctx_affiliate[idx],
                 self.ctx_month[idx],
                 self.ctx_stay[idx],
                 self.ctx_trip_len[idx],
@@ -69,6 +72,7 @@ class CitySequenceDataset(Dataset):
             self.y_values[idx],
             self.ctx_booker[idx],
             self.ctx_device[idx],
+            self.ctx_affiliate[idx],
             self.ctx_month[idx],
             self.ctx_stay[idx],
             self.ctx_trip_len[idx],
@@ -85,13 +89,14 @@ class CitySequenceDataset(Dataset):
 
 def collate_city_batch(batch):
     n_fields = len(batch[0])
-    if n_fields == 14:
-        xs, bs, ds, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+    if n_fields == 15:
+        xs, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
         xs_padded = pad_sequence(xs, batch_first=True, padding_value=PAD_TOKEN_ID)
         return (
             xs_padded,
             torch.stack(bs),
             torch.stack(ds),
+            torch.stack(afs),
             torch.stack(ms),
             torch.stack(ss),
             torch.stack(tls),
@@ -104,14 +109,15 @@ def collate_city_batch(batch):
             torch.stack(bcs),
             torch.stack(brs),
         )
-    if n_fields == 15:
-        xs, ys, bs, ds, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+    if n_fields == 16:
+        xs, ys, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
         xs_padded = pad_sequence(xs, batch_first=True, padding_value=PAD_TOKEN_ID)
         return (
             xs_padded,
             torch.stack(ys),
             torch.stack(bs),
             torch.stack(ds),
+            torch.stack(afs),
             torch.stack(ms),
             torch.stack(ss),
             torch.stack(tls),
@@ -147,6 +153,7 @@ def build_city_dataloaders(
         list[int],
         list[int],
         list[int],
+        list[int],
     ],
     test_ctx: tuple[
         list[int],
@@ -162,15 +169,17 @@ def build_city_dataloaders(
         list[int],
         list[int],
         list[int],
+        list[int],
     ],
 ) -> tuple[DataLoader, DataLoader]:
-    tb, td, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr = train_ctx
-    eb, ed, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr = test_ctx
+    tb, td, ta, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr = train_ctx
+    eb, ed, ea, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr = test_ctx
     train_ds = CitySequenceDataset(
         train_x,
         train_y,
         ctx_booker=tb,
         ctx_device=td,
+        ctx_affiliate=ta,
         ctx_month=tm,
         ctx_stay=ts,
         ctx_trip_len=ttl,
@@ -187,6 +196,7 @@ def build_city_dataloaders(
         test_x,
         ctx_booker=eb,
         ctx_device=ed,
+        ctx_affiliate=ea,
         ctx_month=em,
         ctx_stay=es,
         ctx_trip_len=etl,

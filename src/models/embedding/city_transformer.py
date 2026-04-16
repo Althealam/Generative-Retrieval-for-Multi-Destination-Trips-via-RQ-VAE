@@ -19,6 +19,7 @@ class CityTransformer(nn.Module):
         max_len: int = 256,
         n_booker_countries: int = 0,
         n_device_classes: int = 0,
+        n_affiliates: int = 0,
         n_hotel_countries: int = 0,
         pooling: str = "last",
     ):
@@ -46,6 +47,7 @@ class CityTransformer(nn.Module):
 
         self.emb_booker = nn.Embedding(n_booker_countries + 1, 64, padding_idx=0)
         self.emb_device = nn.Embedding(n_device_classes + 1, 48, padding_idx=0)
+        self.emb_affiliate = nn.Embedding(n_affiliates + 1, 48, padding_idx=0)
         self.emb_month = nn.Embedding(13, 32)
         self.emb_stay = nn.Embedding(31, 48)
         self.emb_trip_len = nn.Embedding(31, 32)
@@ -57,22 +59,17 @@ class CityTransformer(nn.Module):
         self.emb_unique_hotel_countries = nn.Embedding(31, 32)
         self.emb_cross_border_count = nn.Embedding(31, 32)
         self.emb_cross_border_ratio = nn.Embedding(11, 24)
-        ctx_dim = 64 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24
+        ctx_dim = 64 + 48 + 48 + 32 + 48 + 32 + 32 + 24 + 32 + 32 + 64 + 32 + 32 + 24
         self.ctx_proj = nn.Linear(ctx_dim, d_model)
 
         self.classifier = nn.Linear(d_model, vocab_size)
-
-    def _generate_causal_mask(self, seq_len: int, device: torch.device) -> torch.Tensor:
-        return torch.triu(
-            torch.ones(seq_len, seq_len, device=device, dtype=torch.bool),
-            diagonal=1,
-        )
 
     def forward(
         self,
         x: torch.Tensor,
         booker_idx: torch.Tensor,
         device_idx: torch.Tensor,
+        affiliate_idx: torch.Tensor,
         month_idx: torch.Tensor,
         stay_idx: torch.Tensor,
         trip_len_idx: torch.Tensor,
@@ -95,11 +92,10 @@ class CityTransformer(nn.Module):
             x = torch.cat([cls_col, x], dim=1)
 
         padding_mask = x.eq(self.pad_token_id)
-        causal_mask = self._generate_causal_mask(x.size(1), x.device)
 
         h = self.embedding(x) * math.sqrt(self.d_model)
         h = self.pos_encoder(h)
-        h = self.transformer(h, mask=causal_mask, src_key_padding_mask=padding_mask)
+        h = self.transformer(h, src_key_padding_mask=padding_mask)
         if self.pooling == "last":
             valid_lengths = (~padding_mask).sum(dim=1).clamp(min=1)
             last_indices = (valid_lengths - 1).unsqueeze(1).unsqueeze(2).expand(-1, 1, h.size(2))
@@ -116,6 +112,7 @@ class CityTransformer(nn.Module):
             [
                 self.emb_booker(booker_idx),
                 self.emb_device(device_idx),
+                self.emb_affiliate(affiliate_idx),
                 self.emb_month(month_idx),
                 self.emb_stay(stay_idx),
                 self.emb_trip_len(trip_len_idx),

@@ -16,6 +16,7 @@ class CitySequencePack:
     y: list[int] | None
     ctx_booker: list[int]
     ctx_device: list[int]
+    ctx_affiliate: list[int]
     ctx_month: list[int]
     ctx_stay: list[int]
     ctx_trip_len: list[int]
@@ -51,6 +52,7 @@ def build_city_sequence_pack(
     multi_step: bool,
     booker_to_idx: dict[str, int],
     device_to_idx: dict[str, int],
+    affiliate_to_idx: dict[str, int],
     hotel_country_to_idx: dict[str, int],
 ) -> CitySequencePack:
     """
@@ -63,6 +65,7 @@ def build_city_sequence_pack(
     y_values: list[int] | None = [] if not is_test else None
     cb: list[int] = []
     cd: list[int] = []
+    ca: list[int] = []
     cm: list[int] = []
     cs: list[int] = []
     ctl: list[int] = []
@@ -82,14 +85,15 @@ def build_city_sequence_pack(
         if is_test:
             x_values.append(token_seq[:-1])
             prefix_len = max(1, len(token_seq) - 1)
-            b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+            b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
             )
             lc, uc, bc, br = row_to_spatial_indices(
                 row, hotel_country_to_idx, prefix_len=prefix_len
             )
             cb.append(b)
             cd.append(d)
+            ca.append(a)
             cm.append(m)
             cs.append(s)
             ctl.append(tl)
@@ -106,14 +110,15 @@ def build_city_sequence_pack(
                 for t in range(1, len(token_seq)):
                     x_values.append(token_seq[:t])
                     y_values.append(token_seq[t])
-                    b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                        row, booker_to_idx, device_to_idx, prefix_len=t
+                    b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                        row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=t
                     )
                     lc, uc, bc, br = row_to_spatial_indices(
                         row, hotel_country_to_idx, prefix_len=t
                     )
                     cb.append(b)
                     cd.append(d)
+                    ca.append(a)
                     cm.append(m)
                     cs.append(s)
                     ctl.append(tl)
@@ -130,14 +135,15 @@ def build_city_sequence_pack(
                     x_values.append(token_seq[:-1])
                     y_values.append(token_seq[-1])
                     prefix_len = len(token_seq) - 1
-                    b, d, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                        row, booker_to_idx, device_to_idx, prefix_len=prefix_len
+                    b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+                        row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
                     )
                     lc, uc, bc, br = row_to_spatial_indices(
                         row, hotel_country_to_idx, prefix_len=prefix_len
                     )
                     cb.append(b)
                     cd.append(d)
+                    ca.append(a)
                     cm.append(m)
                     cs.append(s)
                     ctl.append(tl)
@@ -155,6 +161,7 @@ def build_city_sequence_pack(
         y=y_values,
         ctx_booker=cb,
         ctx_device=cd,
+        ctx_affiliate=ca,
         ctx_month=cm,
         ctx_stay=cs,
         ctx_trip_len=ctl,

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sys
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -15,7 +18,7 @@ if str(ROOT) not in sys.path:
 
 from src.datasets import PAD_TOKEN_ID, UNK_TOKEN_ID, build_city_dataloaders
 from src.features import (
-    build_booker_device_vocabs,
+    build_booker_device_affiliate_vocabs,
     build_hotel_country_vocab,
     build_city_sequence_pack,
     build_city_vocab,
@@ -26,8 +29,20 @@ from src.training.embedding import recommend_top4_cities, train_embedding_model
 from src.utils import data_dir, print_accuracy_at_4_report, submission_dir, top_city_ids_from_train
 
 
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--seed", type=int, default=42)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--lr", type=float, default=1e-3)
@@ -48,6 +63,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    seed_everything(args.seed)
+    print(f"Using random seed: {args.seed}")
     out_dir = submission_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,7 +80,9 @@ def main() -> None:
     # print("city_to_idx:", city_to_idx)
     vocab_size = len(city_to_idx) + 2
 
-    booker_to_idx, device_to_idx, n_booker, n_device = build_booker_device_vocabs(train_trips)
+    booker_to_idx, device_to_idx, affiliate_to_idx, n_booker, n_device, n_affiliate = (
+        build_booker_device_affiliate_vocabs(train_trips)
+    )
     hotel_country_to_idx, n_hotel_country = build_hotel_country_vocab(train_trips)
 
     train_pack = build_city_sequence_pack(
@@ -73,6 +92,7 @@ def main() -> None:
         multi_step=args.multi_step,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
     )
     test_pack = build_city_sequence_pack(
@@ -82,6 +102,7 @@ def main() -> None:
         multi_step=False,
         booker_to_idx=booker_to_idx,
         device_to_idx=device_to_idx,
+        affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
     )
 
@@ -95,6 +116,7 @@ def main() -> None:
     train_ctx = (
         train_pack.ctx_booker,
         train_pack.ctx_device,
+        train_pack.ctx_affiliate,
         train_pack.ctx_month,
         train_pack.ctx_stay,
         train_pack.ctx_trip_len,
@@ -110,6 +132,7 @@ def main() -> None:
     test_ctx = (
         test_pack.ctx_booker,
         test_pack.ctx_device,
+        test_pack.ctx_affiliate,
         test_pack.ctx_month,
         test_pack.ctx_stay,
         test_pack.ctx_trip_len,
@@ -141,17 +164,9 @@ def main() -> None:
             num_layers=2,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
             pooling=args.pooling,
-        )
-        model = train_embedding_model(
-            model,
-            train_loader,
-            pad_token_id=PAD_TOKEN_ID,
-            epochs=args.epochs,
-            lr=args.lr,
-            weight_decay=args.weight_decay,
-            label_smoothing=args.label_smoothing,
         )
     elif model_type == "gru":
         model = CityGRU(
@@ -161,20 +176,21 @@ def main() -> None:
             hidden_dim=256,
             n_booker_countries=n_booker,
             n_device_classes=n_device,
+            n_affiliates=n_affiliate,
             n_hotel_countries=n_hotel_country,
-        )
-        model = train_embedding_model(
-            model,
-            train_loader,
-            pad_token_id=PAD_TOKEN_ID,
-            epochs=args.epochs,
-            lr=args.lr,
-            weight_decay=args.weight_decay,
-            label_smoothing=args.label_smoothing,
         )
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
+    model = train_embedding_model(
+        model,
+        train_loader,
+        pad_token_id=PAD_TOKEN_ID,
+        epochs=args.epochs,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        label_smoothing=args.label_smoothing,
+    )
     top_popular = top_city_ids_from_train(train_set, k=4)
     predictions = recommend_top4_cities(
         model=model,

@@ -92,3 +92,11 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
     - Embedding with transformer: 0.487093
     - RQVAE with transformer: 0.338428
     - RQKMeans with transformer: 0.290920
+### 2026/4/16
+* Drop causal mask for embedding model
+    - Embedding with transformer: 0.485296 
+* Add affiliate_id
+    - Embedding with transformer: 0.483202
+    - RQVAE: 0.341598
+    - RQKMeans: 
+* Change the type of device_class: before that we use "first", which means that we just get the first trip device type, but now we use the list of device_class
