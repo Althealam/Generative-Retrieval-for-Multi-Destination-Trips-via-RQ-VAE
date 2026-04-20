@@ -31,17 +31,11 @@ The training dataset consists of over a million of anonymized hotel reservations
 * GPU: NVIDIA GeForce RTX 5090, 1
 * CPU: 25 Core
 
-### Dataset
+### 📝 Dataset
 - **Data Source**: [Booking.com Multi-Destination Trips Dataset](https://github.com/bookingcom/ml-dataset-mdt)
 - **Paper**: [Multi-Destination Trip Dataset](https://dl.acm.org/doi/10.1145/3404835.3463240)
 - **Challenge**: Booking.com WSDM WebTour 2021 Challenge
 - **Conference**: [WSDM 2021](https://ceur-ws.org/Vol-2855/)
-
-
-## 🙏 Acknowledgments
-
-- Booking.com for providing the multi-destination trips dataset
-- WSDM WebTour 2021 Challenge organizers
 
 ## 🧪 Experiments
 Experiment notes: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spaceOverview
@@ -117,6 +111,10 @@ Experiment notes: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScen
 - **Semantic side info is not always additive**: adding RQ semantic IDs can help slightly, but naive gate fusion may hurt without extra tuning.
 
 ## 🏗️ Architecture and Performance Comparison
+
+### Embedding Model Architecture (Image)
+
+![Embedding Architecture](assets/embedding-architecture.svg)
 
 | Pipeline | Input Representation | Prediction Target | Decoder Strategy | Transformer Best Accuracy@4 | GRU Best Accuracy@4 |
 |---|---|---|---|---:|---:|
