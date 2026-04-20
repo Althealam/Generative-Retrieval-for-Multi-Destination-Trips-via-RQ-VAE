@@ -118,6 +118,22 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 - **Direct city embedding baseline is strong**: embedding-based next-city classification outperforms current RQ code-based routes.
 - **Semantic side info is not always additive**: adding RQ semantic IDs can help slightly, but naive gate fusion may hurt without extra tuning.
 
+## Architecture and Performance Comparison
+
+| Pipeline | Input Representation | Prediction Target | Decoder Strategy | Transformer Best Accuracy@4 | GRU Best Accuracy@4 |
+|---|---|---|---|---:|---:|
+| Embedding | City prefix token sequence + context features | Direct next `city_id` token | Single classifier over city vocabulary | `0.487093` | `0.489117` |
+| RQVAE | RQ code sequence + context features | Next `(code1, code2)` pair | Map top code pairs to cities via `code_to_cities` | `0.338428` | `0.348745` |
+| RQKMeans | Residual k-means code sequence + context features | Next `(code1, code2)` pair | Map top code pairs to cities via `code_to_cities` | `0.306643` | `0.329144` |
+
+### Pipeline Notes
+- **Embedding**: predicts city directly; currently the strongest route in this project.
+- **RQVAE / RQKMeans**: predict semantic code pairs first, then decode back to candidate cities.
+
+### Takeaway
+- In current experiments, **direct city classification (Embedding pipeline)** is consistently better than both **RQVAE** and **RQKMeans** pipelines.
+- RQ-based pipelines remain useful for semantic compression experiments and can be further improved with better codebook quality and stronger code-to-city decoding strategies.
+
 ## How To Run
 
 Use the unified entry script:
