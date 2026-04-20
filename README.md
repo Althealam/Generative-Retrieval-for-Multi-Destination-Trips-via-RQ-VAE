@@ -134,15 +134,15 @@ Experiment notes: [Feishu Wiki](https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17
 
 ## 🏗️ Architecture and Performance Comparison
 
-### Embedding Model Architecture (Image)
+### Embedding Model Architecture
 
 ![Embedding Architecture](assets/embedding-architecture.png)
 
-### RQVAE Pipeline Architecture (Image)
+### RQVAE Pipeline Architecture 
 
 ![RQVAE Architecture](assets/rqvae-architecture.png)
 
-### RQKMeans Pipeline Architecture (Image)
+### RQKMeans Pipeline Architecture
 
 ![RQKMeans Architecture](assets/rqkmeans-architecture.png)
 
