@@ -29,6 +29,9 @@ The training dataset consists of over a million of anonymized hotel reservations
 - **Target**: Predict the final destination city for incomplete trips
 
 ## References
+### Computer Resource
+* GPU: NVIDIA GeForce RTX 5090, 1
+* CPU: 25 Core
 
 ### Dataset
 - **Data Source**: [Booking.com Multi-Destination Trips Dataset](https://github.com/bookingcom/ml-dataset-mdt)
@@ -100,3 +103,73 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
     - RQVAE: 0.341598
     - RQKMeans: 0.304379
 * Change the type of device_class: before that we use "first", which means that we just get the first trip device type, but now we use the list of device_class
+### 2026/4/20
+* Add semantic ID as side info into the embedding model
+    - Embedding with rqvae: 0.484334
+    - Embedding with rqkmeans: 0.484093
+* Feature confusion: add gate mechanism to combine context features and sequence last hidden states feature
+    - Embedding: 0.480598
+
+### Useful Tricks (from experiments)
+- **Multi-step training is consistently helpful**: turning on `--multi_step` improves all three pipelines (Embedding / RQVAE / RQKMeans), especially when training data is sparse at longer sequence lengths.
+- **Hidden-state extraction matters**: fixing last-hidden extraction logic gave clear gains in both Transformer and GRU variants.
+- **Transformer pooling choice is critical**: `last` and `mean` work much better than `cls` in current embedding setup.
+- **Geography features are useful**: `last_hotel_country`, `unique_hotel_countries`, `cross_border_count`, `cross_border_ratio` improved performance.
+- **Direct city embedding baseline is strong**: embedding-based next-city classification outperforms current RQ code-based routes.
+- **Semantic side info is not always additive**: adding RQ semantic IDs can help slightly, but naive gate fusion may hurt without extra tuning.
+
+## How To Run
+
+Use the unified entry script:
+
+```bash
+./scripts/run_train.sh <embedding|rqvae|rqkmeans> [extra args...]
+```
+
+### 1) Train embedding model
+
+```bash
+./scripts/run_train.sh embedding --multi_step
+```
+
+Example with semantic side info and gate fusion:
+
+```bash
+./scripts/run_train.sh embedding \
+  --multi_step \
+  --fusion gate \
+  --semantic_source rqkmeans
+```
+
+Or use RQVAE semantic mapping:
+
+```bash
+./scripts/run_train.sh embedding \
+  --multi_step \
+  --semantic_source rqvae \
+  --semantic_mapping_path "/root/gr/Generative-Retrieval-for-Multi-Destination-Trips/output/rqvae/city_to_codes_rqvae_20260409_110222.json"
+```
+
+### 2) Train RQVAE code prediction model
+
+```bash
+./scripts/run_train.sh rqvae --multi_step
+```
+
+Use a specific mapping file:
+
+```bash
+./scripts/run_train.sh rqvae --multi_step --mapping_path "/path/to/city_to_codes_rqvae_xxx.json"
+```
+
+### 3) Train RQKMeans code prediction model
+
+```bash
+./scripts/run_train.sh rqkmeans --multi_step
+```
+
+### Optional: run pipeline-specific scripts directly
+
+- `./scripts/run_train_model_with_embedding.sh ...`
+- `./scripts/run_train_model_with_rqvae.sh ...`
+- `./scripts/run_train_model_with_rqkmeans.sh ...`

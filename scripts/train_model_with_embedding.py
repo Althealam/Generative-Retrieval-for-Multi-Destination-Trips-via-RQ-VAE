@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import sys
 from datetime import datetime
@@ -20,9 +21,11 @@ from src.datasets import PAD_TOKEN_ID, UNK_TOKEN_ID, build_city_dataloaders
 from src.features import (
     build_booker_device_affiliate_vocabs,
     build_hotel_country_vocab,
+    build_rq_codebook,
     build_city_sequence_pack,
     build_city_vocab,
     create_multiple_sequences,
+    train_word2vec,
 )
 from src.models import CityGRU, CityTransformer
 from src.training.embedding import recommend_top4_cities, train_embedding_model
@@ -58,7 +61,122 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ground_truth", type=str, default=None, help="Path to ground_truth.csv (default: data/).")
     p.add_argument("--model", type=str, default='transformer', help="transformer/gru")
     p.add_argument("--pooling", type=str, default="last", help="last/mean/cls (Transformer only)")
+    p.add_argument(
+        "--fusion",
+        type=str,
+        default="add",
+        choices=["add", "gate"],
+        help="How to fuse context with sequence representation.",
+    )
+    p.add_argument(
+        "--semantic_source",
+        type=str,
+        default="none",
+        choices=["none", "rqkmeans", "rqvae"],
+        help="Optional semantic side info source.",
+    )
+    p.add_argument(
+        "--semantic_mapping_path",
+        type=str,
+        default="/root/gr/Generative-Retrieval-for-Multi-Destination-Trips/output/rqvae/city_to_codes_rqvae_20260409_110222.json",
+        help="Path to city_to_codes JSON (required for --semantic_source rqvae).",
+    )
+    p.add_argument(
+        "--semantic_codebook_size",
+        type=int,
+        default=128,
+        help="Semantic codebook size (e.g., 32 for rqkmeans, 128 for rqvae).",
+    )
     return p.parse_args()
+
+def _load_rqvae_mapping(mapping_path: str) -> dict[int, tuple[int, int]]:
+    with open(mapping_path, encoding="utf-8") as f:
+        raw = json.load(f)
+    return {int(k): (int(v[0]), int(v[1])) for k, v in raw.items()}
+
+
+def _build_semantic_mapping(
+    args: argparse.Namespace,
+    train_set: pd.DataFrame,
+    train_trips: pd.DataFrame,
+) -> dict[int, tuple[int, int]] | None:
+    if args.semantic_source == "none":
+        return None
+    if args.semantic_source == "rqkmeans":
+        print("正在构建 RQ-KMeans semantic id 映射...")
+        w2v = train_word2vec(train_trips, vector_size=64, window=5)
+        return build_rq_codebook(
+            train_set,
+            w2v,
+            n_clusters=args.semantic_codebook_size,
+            random_state=args.seed,
+        )
+    if not args.semantic_mapping_path:
+        raise ValueError("--semantic_mapping_path is required when --semantic_source rqvae")
+    print("正在加载 RQVAE semantic id 映射...")
+    return _load_rqvae_mapping(args.semantic_mapping_path)
+
+
+def _ctx_tuple_from_pack(pack) -> tuple[list[int], ...]:
+    return (
+        pack.ctx_booker,
+        pack.ctx_device,
+        pack.ctx_affiliate,
+        pack.ctx_month,
+        pack.ctx_stay,
+        pack.ctx_trip_len,
+        pack.ctx_num_unique_cities,
+        pack.ctx_repeat_city_ratio,
+        pack.ctx_last_stay_days,
+        pack.ctx_same_country_streak,
+        pack.ctx_last_hotel_country,
+        pack.ctx_unique_hotel_countries,
+        pack.ctx_cross_border_count,
+        pack.ctx_cross_border_ratio,
+        pack.ctx_sem_code1,
+        pack.ctx_sem_code2,
+    )
+
+
+def _build_model(
+    args: argparse.Namespace,
+    *,
+    vocab_size: int,
+    n_booker: int,
+    n_device: int,
+    n_affiliate: int,
+    n_hotel_country: int,
+):
+    n_semantic_codes = args.semantic_codebook_size if args.semantic_source != "none" else 0
+    if args.model == "transformer":
+        return CityTransformer(
+            vocab_size=vocab_size,
+            pad_token_id=PAD_TOKEN_ID,
+            d_model=256,
+            nhead=4,
+            num_layers=2,
+            n_booker_countries=n_booker,
+            n_device_classes=n_device,
+            n_affiliates=n_affiliate,
+            n_hotel_countries=n_hotel_country,
+            n_semantic_codes=n_semantic_codes,
+            pooling=args.pooling,
+            fusion=args.fusion,
+        )
+    if args.model == "gru":
+        return CityGRU(
+            vocab_size=vocab_size,
+            pad_token_id=PAD_TOKEN_ID,
+            embedding_dim=256,
+            hidden_dim=256,
+            n_booker_countries=n_booker,
+            n_device_classes=n_device,
+            n_affiliates=n_affiliate,
+            n_hotel_countries=n_hotel_country,
+            n_semantic_codes=n_semantic_codes,
+            fusion=args.fusion,
+        )
+    raise ValueError(f"Unsupported model type: {args.model}")
 
 
 def main() -> None:
@@ -75,6 +193,8 @@ def main() -> None:
     train_trips = create_multiple_sequences(train_set)
     # print(train_trips)
     test_trips = create_multiple_sequences(test_set)
+
+    city_to_semantic_codes = _build_semantic_mapping(args, train_set, train_trips)
 
     city_to_idx, idx_to_city = build_city_vocab(train_set)
     # print("city_to_idx:", city_to_idx)
@@ -94,6 +214,7 @@ def main() -> None:
         device_to_idx=device_to_idx,
         affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
+        city_to_semantic_codes=city_to_semantic_codes,
     )
     test_pack = build_city_sequence_pack(
         test_trips,
@@ -104,6 +225,7 @@ def main() -> None:
         device_to_idx=device_to_idx,
         affiliate_to_idx=affiliate_to_idx,
         hotel_country_to_idx=hotel_country_to_idx,
+        city_to_semantic_codes=city_to_semantic_codes,
     )
 
     print(
@@ -113,38 +235,8 @@ def main() -> None:
         f"| pooling={args.pooling}"
     )
 
-    train_ctx = (
-        train_pack.ctx_booker,
-        train_pack.ctx_device,
-        train_pack.ctx_affiliate,
-        train_pack.ctx_month,
-        train_pack.ctx_stay,
-        train_pack.ctx_trip_len,
-        train_pack.ctx_num_unique_cities,
-        train_pack.ctx_repeat_city_ratio,
-        train_pack.ctx_last_stay_days,
-        train_pack.ctx_same_country_streak,
-        train_pack.ctx_last_hotel_country,
-        train_pack.ctx_unique_hotel_countries,
-        train_pack.ctx_cross_border_count,
-        train_pack.ctx_cross_border_ratio,
-    )
-    test_ctx = (
-        test_pack.ctx_booker,
-        test_pack.ctx_device,
-        test_pack.ctx_affiliate,
-        test_pack.ctx_month,
-        test_pack.ctx_stay,
-        test_pack.ctx_trip_len,
-        test_pack.ctx_num_unique_cities,
-        test_pack.ctx_repeat_city_ratio,
-        test_pack.ctx_last_stay_days,
-        test_pack.ctx_same_country_streak,
-        test_pack.ctx_last_hotel_country,
-        test_pack.ctx_unique_hotel_countries,
-        test_pack.ctx_cross_border_count,
-        test_pack.ctx_cross_border_ratio,
-    )
+    train_ctx = _ctx_tuple_from_pack(train_pack)
+    test_ctx = _ctx_tuple_from_pack(test_pack)
     train_loader, test_loader = build_city_dataloaders(
         train_pack.x,
         train_pack.y,
@@ -154,33 +246,14 @@ def main() -> None:
         test_ctx=test_ctx,
     )
     
-    model_type = args.model
-    if model_type=='transformer':
-        model = CityTransformer(
-            vocab_size=vocab_size,
-            pad_token_id=PAD_TOKEN_ID,
-            d_model=256,
-            nhead=4,
-            num_layers=2,
-            n_booker_countries=n_booker,
-            n_device_classes=n_device,
-            n_affiliates=n_affiliate,
-            n_hotel_countries=n_hotel_country,
-            pooling=args.pooling,
-        )
-    elif model_type == "gru":
-        model = CityGRU(
-            vocab_size=vocab_size,
-            pad_token_id=PAD_TOKEN_ID,
-            embedding_dim=256,
-            hidden_dim=256,
-            n_booker_countries=n_booker,
-            n_device_classes=n_device,
-            n_affiliates=n_affiliate,
-            n_hotel_countries=n_hotel_country,
-        )
-    else:
-        raise ValueError(f"Unsupported model type: {model_type}")
+    model = _build_model(
+        args,
+        vocab_size=vocab_size,
+        n_booker=n_booker,
+        n_device=n_device,
+        n_affiliate=n_affiliate,
+        n_hotel_country=n_hotel_country,
+    )
 
     model = train_embedding_model(
         model,

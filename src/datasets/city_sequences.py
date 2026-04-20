@@ -27,6 +27,8 @@ class CitySequenceDataset(Dataset):
         ctx_unique_hotel_countries: list[int],
         ctx_cross_border_count: list[int],
         ctx_cross_border_ratio: list[int],
+        ctx_sem_code1: list[int],
+        ctx_sem_code2: list[int],
     ):
         self.x_values = [torch.tensor(x, dtype=torch.long) for x in x_values]
         self.y_values = torch.tensor(y_values, dtype=torch.long) if y_values is not None else None
@@ -44,6 +46,8 @@ class CitySequenceDataset(Dataset):
         self.ctx_unique_hotel_countries = torch.tensor(ctx_unique_hotel_countries, dtype=torch.long)
         self.ctx_cross_border_count = torch.tensor(ctx_cross_border_count, dtype=torch.long)
         self.ctx_cross_border_ratio = torch.tensor(ctx_cross_border_ratio, dtype=torch.long)
+        self.ctx_sem_code1 = torch.tensor(ctx_sem_code1, dtype=torch.long)
+        self.ctx_sem_code2 = torch.tensor(ctx_sem_code2, dtype=torch.long)
 
     def __len__(self) -> int:
         return len(self.x_values)
@@ -66,6 +70,8 @@ class CitySequenceDataset(Dataset):
                 self.ctx_unique_hotel_countries[idx],
                 self.ctx_cross_border_count[idx],
                 self.ctx_cross_border_ratio[idx],
+                self.ctx_sem_code1[idx],
+                self.ctx_sem_code2[idx],
             )
         return (
             self.x_values[idx],
@@ -84,13 +90,15 @@ class CitySequenceDataset(Dataset):
             self.ctx_unique_hotel_countries[idx],
             self.ctx_cross_border_count[idx],
             self.ctx_cross_border_ratio[idx],
+            self.ctx_sem_code1[idx],
+            self.ctx_sem_code2[idx],
         )
 
 
 def collate_city_batch(batch):
     n_fields = len(batch[0])
-    if n_fields == 15:
-        xs, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+    if n_fields == 17:
+        xs, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs, sem1s, sem2s = zip(*batch)
         xs_padded = pad_sequence(xs, batch_first=True, padding_value=PAD_TOKEN_ID)
         return (
             xs_padded,
@@ -108,9 +116,11 @@ def collate_city_batch(batch):
             torch.stack(ucs),
             torch.stack(bcs),
             torch.stack(brs),
+            torch.stack(sem1s),
+            torch.stack(sem2s),
         )
-    if n_fields == 16:
-        xs, ys, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs = zip(*batch)
+    if n_fields == 18:
+        xs, ys, bs, ds, afs, ms, ss, tls, nus, rrs, lss, scs, lcs, ucs, bcs, brs, sem1s, sem2s = zip(*batch)
         xs_padded = pad_sequence(xs, batch_first=True, padding_value=PAD_TOKEN_ID)
         return (
             xs_padded,
@@ -129,6 +139,8 @@ def collate_city_batch(batch):
             torch.stack(ucs),
             torch.stack(bcs),
             torch.stack(brs),
+            torch.stack(sem1s),
+            torch.stack(sem2s),
         )
     raise ValueError(f"Unexpected batch tuple length {n_fields}")
 
@@ -140,6 +152,8 @@ def build_city_dataloaders(
     batch_size: int = 256,
     *,
     train_ctx: tuple[
+        list[int],
+        list[int],
         list[int],
         list[int],
         list[int],
@@ -170,10 +184,12 @@ def build_city_dataloaders(
         list[int],
         list[int],
         list[int],
+        list[int],
+        list[int],
     ],
 ) -> tuple[DataLoader, DataLoader]:
-    tb, td, ta, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr = train_ctx
-    eb, ed, ea, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr = test_ctx
+    tb, td, ta, tm, ts, ttl, tnu, trr, tls, tsc, tlc, tuc, tbc, tbr, tsem1, tsem2 = train_ctx
+    eb, ed, ea, em, es, etl, enu, err, els, esc, elc, euc, ebc, ebr, esem1, esem2 = test_ctx
     train_ds = CitySequenceDataset(
         train_x,
         train_y,
@@ -191,6 +207,8 @@ def build_city_dataloaders(
         ctx_unique_hotel_countries=tuc,
         ctx_cross_border_count=tbc,
         ctx_cross_border_ratio=tbr,
+        ctx_sem_code1=tsem1,
+        ctx_sem_code2=tsem2,
     )
     test_ds = CitySequenceDataset(
         test_x,
@@ -208,6 +226,8 @@ def build_city_dataloaders(
         ctx_unique_hotel_countries=euc,
         ctx_cross_border_count=ebc,
         ctx_cross_border_ratio=ebr,
+        ctx_sem_code1=esem1,
+        ctx_sem_code2=esem2,
     )
 
     train_loader = DataLoader(

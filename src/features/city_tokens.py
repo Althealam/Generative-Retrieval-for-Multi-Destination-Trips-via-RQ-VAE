@@ -10,6 +10,17 @@ from src.datasets.tokens import UNK_TOKEN_ID
 from src.features.context import row_to_context_indices, row_to_spatial_indices
 
 
+def _semantic_code_from_city(
+    city_id: int | None,
+    city_to_semantic_codes: dict[int, tuple[int, int]] | None,
+) -> tuple[int, int]:
+    if city_id is None or city_to_semantic_codes is None or city_id not in city_to_semantic_codes:
+        return 0, 0
+    sem1, sem2 = city_to_semantic_codes[city_id]
+    # Reserve 0 for missing/padding semantic side information.
+    return int(sem1) + 1, int(sem2) + 1
+
+
 @dataclass
 class CitySequencePack:
     x: list[list[int]]
@@ -28,6 +39,8 @@ class CitySequencePack:
     ctx_unique_hotel_countries: list[int]
     ctx_cross_border_count: list[int]
     ctx_cross_border_ratio: list[int]
+    ctx_sem_code1: list[int]
+    ctx_sem_code2: list[int]
 
 
 def build_city_vocab(train_set: pd.DataFrame) -> tuple[dict[int, int], dict[int, int]]:
@@ -54,6 +67,7 @@ def build_city_sequence_pack(
     device_to_idx: dict[str, int],
     affiliate_to_idx: dict[str, int],
     hotel_country_to_idx: dict[str, int],
+    city_to_semantic_codes: dict[int, tuple[int, int]] | None = None,
 ) -> CitySequencePack:
     """
     将每个trip变成模型输入
@@ -77,6 +91,33 @@ def build_city_sequence_pack(
     cuc: list[int] = []
     cbc: list[int] = []
     cbr: list[int] = []
+    csem1: list[int] = []
+    csem2: list[int] = []
+
+    def append_context_and_semantic(row: pd.Series, prefix_len: int, last_city: int | None) -> None:
+        b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
+            row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
+        )
+        lc, uc, bc, br = row_to_spatial_indices(
+            row, hotel_country_to_idx, prefix_len=prefix_len
+        )
+        sem1, sem2 = _semantic_code_from_city(last_city, city_to_semantic_codes)
+        cb.append(b)
+        cd.append(d)
+        ca.append(a)
+        cm.append(m)
+        cs.append(s)
+        ctl.append(tl)
+        cnu.append(nu)
+        crr.append(rr)
+        cls.append(ls)
+        csc.append(sc)
+        clc.append(lc)
+        cuc.append(uc)
+        cbc.append(bc)
+        cbr.append(br)
+        csem1.append(sem1)
+        csem2.append(sem2)
 
     for _, row in trip_df.iterrows():
         cities = row["city_id"]
@@ -85,76 +126,20 @@ def build_city_sequence_pack(
         if is_test:
             x_values.append(token_seq[:-1])
             prefix_len = max(1, len(token_seq) - 1)
-            b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
-            )
-            lc, uc, bc, br = row_to_spatial_indices(
-                row, hotel_country_to_idx, prefix_len=prefix_len
-            )
-            cb.append(b)
-            cd.append(d)
-            ca.append(a)
-            cm.append(m)
-            cs.append(s)
-            ctl.append(tl)
-            cnu.append(nu)
-            crr.append(rr)
-            cls.append(ls)
-            csc.append(sc)
-            clc.append(lc)
-            cuc.append(uc)
-            cbc.append(bc)
-            cbr.append(br)
+            last_city = cities[prefix_len - 1] if len(cities) >= prefix_len else None
+            append_context_and_semantic(row, prefix_len, last_city)
         elif y_values is not None:
             if multi_step:
                 for t in range(1, len(token_seq)):
                     x_values.append(token_seq[:t])
                     y_values.append(token_seq[t])
-                    b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                        row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=t
-                    )
-                    lc, uc, bc, br = row_to_spatial_indices(
-                        row, hotel_country_to_idx, prefix_len=t
-                    )
-                    cb.append(b)
-                    cd.append(d)
-                    ca.append(a)
-                    cm.append(m)
-                    cs.append(s)
-                    ctl.append(tl)
-                    cnu.append(nu)
-                    crr.append(rr)
-                    cls.append(ls)
-                    csc.append(sc)
-                    clc.append(lc)
-                    cuc.append(uc)
-                    cbc.append(bc)
-                    cbr.append(br)
+                    append_context_and_semantic(row, t, cities[t - 1])
             else:
                 if len(token_seq) >= 2:
                     x_values.append(token_seq[:-1])
                     y_values.append(token_seq[-1])
                     prefix_len = len(token_seq) - 1
-                    b, d, a, m, s, tl, nu, rr, ls, sc = row_to_context_indices(
-                        row, booker_to_idx, device_to_idx, affiliate_to_idx, prefix_len=prefix_len
-                    )
-                    lc, uc, bc, br = row_to_spatial_indices(
-                        row, hotel_country_to_idx, prefix_len=prefix_len
-                    )
-                    cb.append(b)
-                    cd.append(d)
-                    ca.append(a)
-                    cm.append(m)
-                    cs.append(s)
-                    ctl.append(tl)
-                    cnu.append(nu)
-                    crr.append(rr)
-                    cls.append(ls)
-                    csc.append(sc)
-                    clc.append(lc)
-                    cuc.append(uc)
-                    cbc.append(bc)
-                    cbr.append(br)
+                    append_context_and_semantic(row, prefix_len, cities[prefix_len - 1])
 
     return CitySequencePack(
         x=x_values,
@@ -173,4 +158,6 @@ def build_city_sequence_pack(
         ctx_unique_hotel_countries=cuc,
         ctx_cross_border_count=cbc,
         ctx_cross_border_ratio=cbr,
+        ctx_sem_code1=csem1,
+        ctx_sem_code2=csem2,
     )

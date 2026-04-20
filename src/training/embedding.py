@@ -43,6 +43,8 @@ def train_embedding_model(
                 b_uc,
                 b_bc,
                 b_br,
+                b_sem1,
+                b_sem2,
             ) = batch
             batch_x = batch_x.to(device)
             batch_y = batch_y.to(device)
@@ -60,8 +62,28 @@ def train_embedding_model(
             b_uc = b_uc.to(device)
             b_bc = b_bc.to(device)
             b_br = b_br.to(device)
+            b_sem1 = b_sem1.to(device)
+            b_sem2 = b_sem2.to(device)
             optimizer.zero_grad()
-            logits = model(batch_x, b_b, b_d, b_a, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
+            logits = model(
+                batch_x,
+                b_b,
+                b_d,
+                b_a,
+                b_m,
+                b_s,
+                b_tl,
+                b_nu,
+                b_rr,
+                b_ls,
+                b_sc,
+                b_lc,
+                b_uc,
+                b_bc,
+                b_br,
+                b_sem1,
+                b_sem2,
+            )
 
             loss = criterion(logits, batch_y)
             loss.backward()
@@ -109,6 +131,8 @@ def recommend_top4_cities(
                 b_uc,
                 b_bc,
                 b_br,
+                b_sem1,
+                b_sem2,
             ) = batch
             batch_x = batch_x.to(device)
             b_b = b_b.to(device)
@@ -125,7 +149,27 @@ def recommend_top4_cities(
             b_uc = b_uc.to(device)
             b_bc = b_bc.to(device)
             b_br = b_br.to(device)
-            logits = model(batch_x, b_b, b_d, b_a, b_m, b_s, b_tl, b_nu, b_rr, b_ls, b_sc, b_lc, b_uc, b_bc, b_br)
+            b_sem1 = b_sem1.to(device)
+            b_sem2 = b_sem2.to(device)
+            logits = model(
+                batch_x,
+                b_b,
+                b_d,
+                b_a,
+                b_m,
+                b_s,
+                b_tl,
+                b_nu,
+                b_rr,
+                b_ls,
+                b_sc,
+                b_lc,
+                b_uc,
+                b_bc,
+                b_br,
+                b_sem1,
+                b_sem2,
+            )
 
             probs = torch.softmax(logits, dim=1)
             _, top_indices = torch.topk(probs, k=min(topk_candidates, probs.size(1)), dim=1)
