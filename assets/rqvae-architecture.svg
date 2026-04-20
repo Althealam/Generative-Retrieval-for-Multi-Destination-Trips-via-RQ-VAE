@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-labelledby="title desc">
+  <title id="title">RQVAE Prediction Pipeline Architecture</title>
+  <desc id="desc">RQVAE code-sequence model predicts next code pair and maps code pairs to cities.</desc>
+  <defs>
+    <style>
+      .title { font: 700 40px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 22px Arial, sans-serif; fill: #334155; }
+      .label { font: 600 19px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 16px Arial, sans-serif; fill: #334155; }
+      .box { fill: #ecfeff; stroke: #0891b2; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box2 { fill: #f8fafc; stroke: #64748b; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box3 { fill: #eef2ff; stroke: #4f46e5; stroke-width: 2.2; rx: 14; ry: 14; }
+      .arrow { stroke: #334155; stroke-width: 2.8; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#334155" />
+    </marker>
+  </defs>
+
+  <text x="800" y="70" text-anchor="middle" class="title">RQVAE Pipeline Architecture</text>
+  <text x="800" y="104" text-anchor="middle" class="subtitle">Predict next semantic code pair, then decode to city candidates</text>
+
+  <rect x="85" y="190" width="265" height="86" class="box" />
+  <text x="218" y="238" text-anchor="middle" class="label">City Prefix Sequence</text>
+
+  <rect x="395" y="190" width="280" height="86" class="box" />
+  <text x="535" y="238" text-anchor="middle" class="label">RQVAE Code Mapping</text>
+
+  <rect x="725" y="168" width="330" height="130" class="box" />
+  <text x="890" y="214" text-anchor="middle" class="label">Code Sequence Encoder</text>
+  <text x="890" y="242" text-anchor="middle" class="small">Transformer or GRU on RQ codes</text>
+  <text x="890" y="268" text-anchor="middle" class="small">with context side features</text>
+
+  <rect x="1105" y="190" width="290" height="86" class="box" />
+  <text x="1250" y="237" text-anchor="middle" class="label">Hidden Representation</text>
+
+  <line x1="350" y1="233" x2="395" y2="233" class="arrow" />
+  <line x1="675" y1="233" x2="725" y2="233" class="arrow" />
+  <line x1="1055" y1="233" x2="1105" y2="233" class="arrow" />
+
+  <rect x="500" y="400" width="250" height="96" class="box3" />
+  <text x="625" y="447" text-anchor="middle" class="label">Head 1</text>
+  <text x="625" y="474" text-anchor="middle" class="small">Predict next code1</text>
+
+  <rect x="850" y="400" width="250" height="96" class="box3" />
+  <text x="975" y="447" text-anchor="middle" class="label">Head 2</text>
+  <text x="975" y="474" text-anchor="middle" class="small">Predict next code2</text>
+
+  <line x1="1250" y1="276" x2="740" y2="400" class="arrow" />
+  <line x1="1250" y1="276" x2="980" y2="400" class="arrow" />
+
+  <rect x="450" y="560" width="700" height="96" class="box2" />
+  <text x="800" y="607" text-anchor="middle" class="label">Joint Code-Pair Scoring</text>
+  <text x="800" y="635" text-anchor="middle" class="small">log_softmax(code1) + log_softmax(code2), then top-k pairs</text>
+
+  <line x1="625" y1="496" x2="720" y2="560" class="arrow" />
+  <line x1="975" y1="496" x2="880" y2="560" class="arrow" />
+
+  <rect x="410" y="730" width="360" height="96" class="box2" />
+  <text x="590" y="777" text-anchor="middle" class="label">Code Pair → Cities</text>
+  <text x="590" y="804" text-anchor="middle" class="small">lookup via code_to_cities mapping</text>
+
+  <rect x="830" y="730" width="360" height="96" class="box2" />
+  <text x="1010" y="777" text-anchor="middle" class="label">Top-4 City Output</text>
+  <text x="1010" y="804" text-anchor="middle" class="small">with global-popularity fallback</text>
+
+  <line x1="690" y1="656" x2="620" y2="730" class="arrow" />
+  <line x1="910" y1="656" x2="980" y2="730" class="arrow" />
+  <line x1="770" y1="778" x2="830" y2="778" class="arrow" />
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">RQVAE Pipeline Architecture</title>
+  <desc id="desc">RQVAE semantic code prediction pipeline with two code heads and code-to-city decoding.</desc>
+  <defs>
+    <style>
+      .title { font: 700 40px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 22px Arial, sans-serif; fill: #334155; }
+      .label { font: 600 19px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 16px Arial, sans-serif; fill: #334155; }
+      .box { fill: #eff6ff; stroke: #2563eb; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box2 { fill: #f8fafc; stroke: #64748b; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box3 { fill: #eef2ff; stroke: #4f46e5; stroke-width: 2.2; rx: 14; ry: 14; }
+      .arrow { stroke: #334155; stroke-width: 2.8; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 8 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#334155" />
+    </marker>
+  </defs>
+
+  <text x="800" y="70" text-anchor="middle" class="title">RQVAE Pipeline Architecture</text>
+  <text x="800" y="104" text-anchor="middle" class="subtitle">Code Sequence Modeling + Two-Head Code Prediction + Code-to-City Decoding</text>
+
+  <rect x="80" y="180" width="270" height="82" class="box" />
+  <text x="215" y="226" text-anchor="middle" class="label">City Prefix Sequence</text>
+
+  <rect x="390" y="180" width="290" height="82" class="box" />
+  <text x="535" y="226" text-anchor="middle" class="label">RQVAE Code Sequence</text>
+
+  <rect x="730" y="160" width="300" height="122" class="box" />
+  <text x="880" y="206" text-anchor="middle" class="label">Sequence Encoder</text>
+  <text x="880" y="236" text-anchor="middle" class="small">Transformer or GRU</text>
+
+  <rect x="1080" y="180" width="260" height="82" class="box" />
+  <text x="1210" y="226" text-anchor="middle" class="label">Last Hidden State</text>
+
+  <line x1="350" y1="221" x2="390" y2="221" class="arrow" />
+  <line x1="680" y1="221" x2="730" y2="221" class="arrow" />
+  <line x1="1030" y1="221" x2="1080" y2="221" class="arrow" />
+
+  <rect x="120" y="430" width="280" height="86" class="box2" />
+  <text x="260" y="470" text-anchor="middle" class="label">Trip Context Features</text>
+  <text x="260" y="497" text-anchor="middle" class="small">booker, device, affiliate, month, stay, ...</text>
+
+  <rect x="450" y="430" width="280" height="86" class="box2" />
+  <text x="590" y="470" text-anchor="middle" class="label">Geography Features</text>
+  <text x="590" y="497" text-anchor="middle" class="small">last_country, cross_border stats</text>
+
+  <rect x="820" y="420" width="320" height="106" class="box3" />
+  <text x="980" y="467" text-anchor="middle" class="label">Feature Embeddings + Concat</text>
+  <text x="980" y="497" text-anchor="middle" class="small">trip side information</text>
+
+  <rect x="820" y="570" width="320" height="86" class="box3" />
+  <text x="980" y="618" text-anchor="middle" class="label">Context Projection</text>
+
+  <line x1="400" y1="473" x2="820" y2="473" class="arrow" />
+  <line x1="730" y1="473" x2="820" y2="473" class="arrow" />
+  <line x1="980" y1="526" x2="980" y2="570" class="arrow" />
+
+  <rect x="1180" y="560" width="340" height="96" class="box" />
+  <text x="1350" y="602" text-anchor="middle" class="label">Fusion</text>
+  <text x="1350" y="629" text-anchor="middle" class="small">hidden + projected context</text>
+
+  <line x1="1140" y1="613" x2="1180" y2="613" class="arrow" />
+  <line x1="1210" y1="262" x2="1280" y2="560" class="arrow dashed" />
+
+  <rect x="1060" y="710" width="200" height="90" class="box2" />
+  <text x="1160" y="760" text-anchor="middle" class="label">Code Head 1</text>
+
+  <rect x="1320" y="710" width="200" height="90" class="box2" />
+  <text x="1420" y="760" text-anchor="middle" class="label">Code Head 2</text>
+
+  <line x1="1320" y1="656" x2="1190" y2="710" class="arrow" />
+  <line x1="1380" y1="656" x2="1400" y2="710" class="arrow" />
+
+  <rect x="640" y="708" width="360" height="95" class="box3" />
+  <text x="820" y="747" text-anchor="middle" class="label">Joint Code-Pair Ranking</text>
+  <text x="820" y="776" text-anchor="middle" class="small">top-k(code1, code2) via combined scores</text>
+
+  <line x1="1060" y1="755" x2="1000" y2="755" class="arrow" />
+  <line x1="1320" y1="755" x2="1000" y2="775" class="arrow" />
+
+  <rect x="300" y="708" width="290" height="95" class="box3" />
+  <text x="445" y="747" text-anchor="middle" class="label">code_to_cities Decode</text>
+  <text x="445" y="776" text-anchor="middle" class="small">map code pairs to candidate cities</text>
+
+  <rect x="70" y="718" width="180" height="75" class="box2" />
+  <text x="160" y="762" text-anchor="middle" class="label">Top-4 Cities</text>
+
+  <line x1="640" y1="755" x2="590" y2="755" class="arrow" />
+  <line x1="300" y1="755" x2="250" y2="755" class="arrow" />
+</svg>

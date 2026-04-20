@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="920" viewBox="0 0 1600 920" role="img" aria-labelledby="title desc">
+  <title id="title">RQKMeans Prediction Pipeline Architecture</title>
+  <desc id="desc">RQKMeans code-sequence model predicts next code pair and maps code pairs to cities.</desc>
+  <defs>
+    <style>
+      .title { font: 700 40px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 22px Arial, sans-serif; fill: #334155; }
+      .label { font: 600 19px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 16px Arial, sans-serif; fill: #334155; }
+      .box { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box2 { fill: #f8fafc; stroke: #64748b; stroke-width: 2.2; rx: 14; ry: 14; }
+      .box3 { fill: #eff6ff; stroke: #2563eb; stroke-width: 2.2; rx: 14; ry: 14; }
+      .arrow { stroke: #334155; stroke-width: 2.8; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#334155" />
+    </marker>
+  </defs>
+
+  <text x="800" y="70" text-anchor="middle" class="title">RQKMeans Pipeline Architecture</text>
+  <text x="800" y="104" text-anchor="middle" class="subtitle">Word2Vec + residual k-means codebook, then code-pair prediction</text>
+
+  <rect x="70" y="170" width="270" height="96" class="box" />
+  <text x="205" y="217" text-anchor="middle" class="label">Train City Sequences</text>
+  <text x="205" y="244" text-anchor="middle" class="small">from trip data</text>
+
+  <rect x="390" y="170" width="250" height="96" class="box" />
+  <text x="515" y="217" text-anchor="middle" class="label">Word2Vec</text>
+  <text x="515" y="244" text-anchor="middle" class="small">city embeddings</text>
+
+  <rect x="690" y="170" width="290" height="96" class="box" />
+  <text x="835" y="217" text-anchor="middle" class="label">Residual K-Means</text>
+  <text x="835" y="244" text-anchor="middle" class="small">two-level codebook</text>
+
+  <rect x="1030" y="170" width="320" height="96" class="box" />
+  <text x="1190" y="217" text-anchor="middle" class="label">City ’ (code1, code2)</text>
+  <text x="1190" y="244" text-anchor="middle" class="small">RQ semantic mapping</text>
+
+  <line x1="340" y1="218" x2="390" y2="218" class="arrow" />
+  <line x1="640" y1="218" x2="690" y2="218" class="arrow" />
+  <line x1="980" y1="218" x2="1030" y2="218" class="arrow" />
+
+  <rect x="120" y="380" width="320" height="96" class="box3" />
+  <text x="280" y="427" text-anchor="middle" class="label">Code Prefix Sequence</text>
+  <text x="280" y="454" text-anchor="middle" class="small">from mapped city prefix</text>
+
+  <rect x="510" y="360" width="360" height="136" class="box3" />
+  <text x="690" y="407" text-anchor="middle" class="label">Code Sequence Encoder</text>
+  <text x="690" y="435" text-anchor="middle" class="small">RQKMeans Transformer / GRU</text>
+  <text x="690" y="462" text-anchor="middle" class="small">with context side features</text>
+
+  <rect x="940" y="380" width="250" height="96" class="box3" />
+  <text x="1065" y="427" text-anchor="middle" class="label">Head 1</text>
+  <text x="1065" y="454" text-anchor="middle" class="small">next code1 logits</text>
+
+  <rect x="1250" y="380" width="250" height="96" class="box3" />
+  <text x="1375" y="427" text-anchor="middle" class="label">Head 2</text>
+  <text x="1375" y="454" text-anchor="middle" class="small">next code2 logits</text>
+
+  <line x1="440" y1="428" x2="510" y2="428" class="arrow" />
+  <line x1="870" y1="428" x2="940" y2="428" class="arrow" />
+  <line x1="870" y1="428" x2="1250" y2="428" class="arrow" />
+
+  <rect x="530" y="560" width="560" height="96" class="box2" />
+  <text x="810" y="607" text-anchor="middle" class="label">Joint Pair Ranking</text>
+  <text x="810" y="635" text-anchor="middle" class="small">combine two heads and select top code pairs</text>
+
+  <line x1="1065" y1="476" x2="760" y2="560" class="arrow" />
+  <line x1="1375" y1="476" x2="860" y2="560" class="arrow" />
+
+  <rect x="470" y="730" width="300" height="96" class="box2" />
+  <text x="620" y="777" text-anchor="middle" class="label">Code Pair ’ Cities</text>
+  <text x="620" y="804" text-anchor="middle" class="small">lookup table</text>
+
+  <rect x="850" y="730" width="300" height="96" class="box2" />
+  <text x="1000" y="777" text-anchor="middle" class="label">Top-4 City Output</text>
+  <text x="1000" y="804" text-anchor="middle" class="small">with fallback fill</text>
+
+  <line x1="740" y1="656" x2="660" y2="730" class="arrow" />
+  <line x1="890" y1="656" x2="960" y2="730" class="arrow" />
+  <line x1="770" y1="778" x2="850" y2="778" class="arrow" />
+</svg>

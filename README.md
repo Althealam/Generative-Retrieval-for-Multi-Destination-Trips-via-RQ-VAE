@@ -138,6 +138,14 @@ Experiment notes: [Feishu Wiki](https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17
 
 ![Embedding Architecture](assets/embedding-architecture.svg)
 
+### RQVAE Pipeline Architecture (Image)
+
+![RQVAE Architecture](assets/rqvae-architecture.svg)
+
+### RQKMeans Pipeline Architecture (Image)
+
+![RQKMeans Architecture](assets/rqkmeans-architecture.svg)
+
 | Pipeline | Input Representation | Prediction Target | Decoder Strategy | Transformer Best Accuracy@4 | GRU Best Accuracy@4 |
 |---|---|---|---|---:|---:|
 | Embedding | City prefix token sequence + context features | Direct next `city_id` token | Single classifier over city vocabulary | `0.487093` | `0.489117` |
