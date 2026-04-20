@@ -1,12 +1,10 @@
-# Generative Retrieval for Multi-Destination Trips via RQ-VAE
+# 🌍 Generative Retrieval for Multi-Destination Trips via RQ-VAE
 
-This project implements a generative retrieval approach for predicting multi-destination trips using Residual Quantized Variational Autoencoder (RQ-VAE), based on the Booking.com Multi-Destination Trips dataset.
-
-## Overview
+## 🧭 Overview
 
 Multi-destination trips involve travelers visiting multiple cities in a single journey. This project aims to predict the next destination city for incomplete multi-destination trips using advanced machine learning techniques.
 
-## Dataset
+## 🗂️ Dataset
 
 The project uses the **Booking.com Multi-Destination Trips Dataset** from the WSDM WebTour 2021 Challenge.
 
@@ -22,14 +20,14 @@ The training dataset consists of over a million of anonymized hotel reservations
 * utrip_id: Unique identification
 
 
-### Dataset Statistics
+### 📊 Dataset Statistics
 - **Training Set**: 1,166,835 bookings
 - **Test Set**: 378,667 bookings (with 70,662 trips to predict)
 - **Features**: user_id, checkin, checkout, city_id, device_class, affiliate_id, booker_country, hotel_country, utrip_id
 - **Target**: Predict the final destination city for incomplete trips
 
-## References
-### Computer Resource
+## 📚 References
+### 💻 Compute Resource
 * GPU: NVIDIA GeForce RTX 5090, 1
 * CPU: 25 Core
 
@@ -40,13 +38,13 @@ The training dataset consists of over a million of anonymized hotel reservations
 - **Conference**: [WSDM 2021](https://ceur-ws.org/Vol-2855/)
 
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 - Booking.com for providing the multi-destination trips dataset
 - WSDM WebTour 2021 Challenge organizers
 
-## Experiments
-record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spaceOverview
+## 🧪 Experiments
+Experiment notes: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spaceOverview
 ### 2026/4/7
 * Use word2vec to generate the sparse city_id embeddings
 * Use rq-vae to generate the discrete city_id representations by using word2vec embeddings
@@ -110,15 +108,15 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 * Feature confusion: add gate mechanism to combine context features and sequence last hidden states feature
     - Embedding: 0.480598
 
-### Useful Tricks (from experiments)
+### ✨ Useful Tricks (from experiments)
 - **Multi-step training is consistently helpful**: turning on `--multi_step` improves all three pipelines (Embedding / RQVAE / RQKMeans), especially when training data is sparse at longer sequence lengths.
 - **Hidden-state extraction matters**: fixing last-hidden extraction logic gave clear gains in both Transformer and GRU variants.
-- **Transformer pooling choice is critical**: `last` and `mean` work much better than `cls` in current embedding setup.
+- **Transformer pooling choice is critical**: `last` and `mean` work much better than `cls` in the current embedding setup.
 - **Geography features are useful**: `last_hotel_country`, `unique_hotel_countries`, `cross_border_count`, `cross_border_ratio` improved performance.
 - **Direct city embedding baseline is strong**: embedding-based next-city classification outperforms current RQ code-based routes.
 - **Semantic side info is not always additive**: adding RQ semantic IDs can help slightly, but naive gate fusion may hurt without extra tuning.
 
-## Architecture and Performance Comparison
+## 🏗️ Architecture and Performance Comparison
 
 | Pipeline | Input Representation | Prediction Target | Decoder Strategy | Transformer Best Accuracy@4 | GRU Best Accuracy@4 |
 |---|---|---|---|---:|---:|
@@ -126,15 +124,11 @@ record note: https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spa
 | RQVAE | RQ code sequence + context features | Next `(code1, code2)` pair | Map top code pairs to cities via `code_to_cities` | `0.338428` | `0.348745` |
 | RQKMeans | Residual k-means code sequence + context features | Next `(code1, code2)` pair | Map top code pairs to cities via `code_to_cities` | `0.306643` | `0.329144` |
 
-### Pipeline Notes
+### 📝 Pipeline Notes
 - **Embedding**: predicts city directly; currently the strongest route in this project.
 - **RQVAE / RQKMeans**: predict semantic code pairs first, then decode back to candidate cities.
 
-### Takeaway
-- In current experiments, **direct city classification (Embedding pipeline)** is consistently better than both **RQVAE** and **RQKMeans** pipelines.
-- RQ-based pipelines remain useful for semantic compression experiments and can be further improved with better codebook quality and stronger code-to-city decoding strategies.
-
-## How To Run
+## 🚀 How To Run
 
 Use the unified entry script:
 
@@ -142,7 +136,7 @@ Use the unified entry script:
 ./scripts/run_train.sh <embedding|rqvae|rqkmeans> [extra args...]
 ```
 
-### 1) Train embedding model
+### 1) 🔹 Train embedding model
 
 ```bash
 ./scripts/run_train.sh embedding --multi_step
@@ -166,7 +160,7 @@ Or use RQVAE semantic mapping:
   --semantic_mapping_path "/root/gr/Generative-Retrieval-for-Multi-Destination-Trips/output/rqvae/city_to_codes_rqvae_20260409_110222.json"
 ```
 
-### 2) Train RQVAE code prediction model
+### 2) 🔹 Train RQVAE code prediction model
 
 ```bash
 ./scripts/run_train.sh rqvae --multi_step
@@ -178,13 +172,13 @@ Use a specific mapping file:
 ./scripts/run_train.sh rqvae --multi_step --mapping_path "/path/to/city_to_codes_rqvae_xxx.json"
 ```
 
-### 3) Train RQKMeans code prediction model
+### 3) 🔹 Train RQKMeans code prediction model
 
 ```bash
 ./scripts/run_train.sh rqkmeans --multi_step
 ```
 
-### Optional: run pipeline-specific scripts directly
+### 🔧 Optional: run pipeline-specific scripts directly
 
 - `./scripts/run_train_model_with_embedding.sh ...`
 - `./scripts/run_train_model_with_rqvae.sh ...`
