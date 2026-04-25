@@ -180,3 +180,23 @@ Coverage includes feature engineering, model forward passes, dataloaders, evalua
 - Paper: [Multi-Destination Trip Dataset](https://dl.acm.org/doi/10.1145/3404835.3463240)
 - Challenge: Booking.com WSDM WebTour 2021
 - Conference: [WSDM 2021](https://ceur-ws.org/Vol-2855/)
+
+### Generative Retrieval / Quantization / Recommendation (Related Work)
+- **VQ-VAE**: van den Oord et al., *Neural Discrete Representation Learning* (NeurIPS 2017)  
+  [https://arxiv.org/abs/1711.00937](https://arxiv.org/abs/1711.00937)
+- **Residual Quantization for VQ**: Zeghidour et al., *SoundStream: An End-to-End Neural Audio Codec* (TASLP 2021)  
+  [https://arxiv.org/abs/2107.03312](https://arxiv.org/abs/2107.03312)
+- **Product/Residual Quantization for ANN Retrieval**: Jegou et al., *Product Quantization for Nearest Neighbor Search* (TPAMI 2011)  
+  [https://hal.inria.fr/inria-00514462](https://hal.inria.fr/inria-00514462)
+- **Residual Vector Quantization in retrieval systems**: Babenko and Lempitsky, *The Inverted Multi-Index* (CVPR 2012)  
+  [https://ieeexplore.ieee.org/document/6247798](https://ieeexplore.ieee.org/document/6247798)
+- **Transformer-based Sequential Recommendation**: Sun et al., *BERT4Rec: Sequential Recommendation with Bidirectional Encoder Representations from Transformer* (CIKM 2019)  
+  [https://arxiv.org/abs/1904.06690](https://arxiv.org/abs/1904.06690)
+- **Generative Recommendation**: Rajput et al., *Recommender Systems with Generative Retrieval* (NeurIPS 2023)  
+  [https://arxiv.org/abs/2305.05065](https://arxiv.org/abs/2305.05065)
+
+### Notes on how these connect to this project
+- RQVAE pipeline is inspired by discrete latent code learning (VQ-VAE family) and residual quantization.
+- RQKMeans pipeline is closer to classical quantization-based indexing (PQ/RQ style).
+- Embedding+Transformer/GRU route aligns with modern sequential recommendation literature.
+- The project evaluates whether semantic code prediction + decoding can compete with direct token prediction.
