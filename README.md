@@ -38,8 +38,6 @@ The training dataset consists of over a million of anonymized hotel reservations
 - **Conference**: [WSDM 2021](https://ceur-ws.org/Vol-2855/)
 
 ## 🧪 Experiments
-Experiment notes: [Feishu Wiki](https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17AEnBc?fromScene=spaceOverview)
-
 ### 🗓️ Timeline
 
 #### 2026-04-07
@@ -155,6 +153,13 @@ Experiment notes: [Feishu Wiki](https://my.feishu.cn/wiki/ICjgw24P8iIb9rkrIVJc17
 ### 📝 Pipeline Notes
 - **Embedding**: predicts city directly; currently the strongest route in this project.
 - **RQVAE / RQKMeans**: predict semantic code pairs first, then decode back to candidate cities.
+
+**Why RQVAE and RQKMeans architectures look similar:**
+- The **prediction models** (Transformer/GRU) are nearly identical for both pipelines
+- Both take discrete code sequences as input and predict the next `(code1, code2)` pair
+- The **key difference is in the encoding stage** (not shown in prediction diagrams):
+  - **RQVAE**: Learns city→codes mapping via autoencoder with residual vector quantization
+  - **RQKMeans**: Generates city→codes mapping via residual k-means clustering on Word2Vec embeddings
 
 ## 🚀 How To Run
 
