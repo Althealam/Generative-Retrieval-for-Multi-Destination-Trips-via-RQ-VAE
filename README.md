@@ -211,3 +211,30 @@ Use a specific mapping file:
 - `./scripts/run_train_model_with_embedding.sh ...`
 - `./scripts/run_train_model_with_rqvae.sh ...`
 - `./scripts/run_train_model_with_rqkmeans.sh ...`
+
+## 🧪 Testing
+
+> **Note**: The test suite in the `tests/` directory was generated and debugged by [Claude Code](https://claude.ai/code), Anthropic's AI coding assistant, ensuring comprehensive coverage of all components.
+
+Run unit tests to verify code correctness:
+
+```bash
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/test_models.py -v
+```
+
+**Test Coverage**:
+- ✅ Feature engineering functions
+- ✅ All model architectures (forward pass, edge cases)
+- ✅ Data loading and batching
+- ✅ Evaluation metrics
+- ✅ Utility functions
