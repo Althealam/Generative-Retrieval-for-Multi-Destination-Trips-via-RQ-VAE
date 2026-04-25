@@ -2,7 +2,7 @@
 
 Predicting the next city for incomplete multi-destination trips using sequence models and semantic code-based retrieval pipelines.
 
-## TL;DR (For Instructor/Reviewer)
+## TL;DR 
 - **Task**: Given a trip prefix, predict the next destination city (evaluated by Accuracy@4).
 - **Best result in this repo**: **Embedding + GRU = `0.489117`** (Embedding + Transformer = `0.487093`).
 - **Main conclusion**: Direct city-token modeling is currently stronger than RQ code-pair pipelines (RQ-VAE / RQKMeans) on this dataset.

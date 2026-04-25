@@ -1,13 +1,11 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{setspace}
-\usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{enumitem}
-\usepackage{amsmath}
-\usepackage{graphicx}
+\usepackage{hyperref}
 
-\title{ORIE 5270 Final Project Summary:\\Generative Retrieval for Multi-Destination Trip Prediction}
+\title{ORIE 5270 Project Summary (Instructor Version)\\Generative Retrieval for Multi-Destination Trip Prediction}
 \author{Althea Lam}
 \date{\today}
 
@@ -15,119 +13,87 @@
 \maketitle
 \onehalfspacing
 
-\section{Introduction}
-This project studies next-destination prediction for multi-city travel itineraries using the Booking.com Multi-Destination Trips dataset from the WSDM WebTour 2021 challenge. The practical goal is to complete incomplete trips by predicting the final city, evaluated with Accuracy@4 (whether the true next city appears in the top 4 recommendations).
+\section*{Project Goal}
+The goal is to predict the \textbf{next destination city} from an incomplete multi-city trip.  
+Evaluation metric: \textbf{Accuracy@4} (whether the true city appears in top-4 predictions).
 
-Unlike standard sequence classification tasks, this problem combines three challenges:
+\section*{Dataset and Setup}
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Large candidate space}: thousands of candidate city IDs.
-    \item \textbf{Behavioral variability}: users have diverse route styles, lengths, and cross-border patterns.
-    \item \textbf{Prefix-only prediction}: the model must infer the next city from partial trajectories.
+    \item Dataset: Booking.com Multi-Destination Trips (WSDM WebTour 2021).
+    \item Train: 1,166,835 booking rows.
+    \item Test: 378,667 booking rows (70,662 trips to complete).
+    \item Each trip is built by sorting by check-in time and grouping by \texttt{utrip\_id}.
 \end{itemize}
 
-The project explores three main pipelines: (1) direct city-token embedding prediction, (2) RQ-VAE code prediction with city decoding, and (3) residual k-means (RQKMeans) code prediction with decoding.
+\section*{What I Implemented}
+I compared three pipelines under both Transformer and GRU backbones:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Embedding pipeline}: direct next-city prediction from city token prefixes.
+    \item \textbf{RQVAE pipeline}: predict next semantic code pair, then decode to city candidates.
+    \item \textbf{RQKMeans pipeline}: residual k-means codebook + next code-pair prediction + decoding.
+\end{enumerate}
 
-\section{Dataset and Task Setup}
-The training split contains approximately 1.17 million booking rows and the test split contains 378k rows, corresponding to about 70k trips to complete. Each row includes fields such as \texttt{city\_id}, \texttt{checkin}, \texttt{checkout}, \texttt{booker\_country}, \texttt{device\_class}, \texttt{affiliate\_id}, and \texttt{hotel\_country}.
-
-\subsection{Trip Construction}
-Raw bookings are grouped by \texttt{utrip\_id} after chronological sorting. For each trip, we construct:
+\textbf{Feature engineering used across runs}:
 \begin{itemize}[leftmargin=1.5em]
-    \item City sequence (\texttt{city\_id} list) as the core behavioral signal.
-    \item Temporal features: month and stay-duration statistics.
-    \item User/context features: booker country, device class, affiliate source.
-    \item Spatial/cross-border features from hotel-country transitions.
+    \item sequence features (city prefix),
+    \item temporal features (month, stay duration),
+    \item trip-structure features (trip length, repetition statistics),
+    \item geography features (hotel-country transitions, cross-border stats),
+    \item user/context features (booker country, device class, affiliate).
 \end{itemize}
 
-\subsection{Training Objective}
-Given a prefix of visited cities, predict the next city (or code pair) and decode to top-4 city candidates. The project supports both:
-\begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Single-step training}: one training sample per trip.
-    \item \textbf{Multi-step training}: multiple prefix-to-next samples per trip.
-\end{itemize}
-Empirically, multi-step training is usually beneficial, but it significantly increases sample count and runtime.
-
-\section{Modeling Pipelines}
-\subsection{Pipeline A: Direct Embedding Prediction}
-The strongest baseline predicts city IDs directly from prefix tokens. Two sequence backbones were tested:
-\begin{itemize}[leftmargin=1.5em]
-    \item Transformer encoder variants (pooling: \texttt{last}, \texttt{mean}, \texttt{cls}).
-    \item GRU next-city classifier.
-\end{itemize}
-Trip-level context embeddings are fused with sequence representations using either additive fusion or a gated fusion option.
-
-\textbf{Key observation:} direct city prediction consistently outperformed code-based pipelines in this repository.
-
-\subsection{Pipeline B: RQ-VAE Code Prediction}
-Cities are first mapped into two-level discrete semantic codes via residual vector quantization (RQ-VAE). The sequence model then predicts the next code pair \((c_1, c_2)\), and a reverse mapping (\texttt{code\_to\_cities}) decodes candidate cities. This pipeline improves semantic compression but introduces error at both code prediction and code-to-city decoding stages.
-
-\subsection{Pipeline C: RQKMeans Code Prediction}
-This pipeline replaces learned VQ with residual k-means over Word2Vec city embeddings. Similar to RQ-VAE, it predicts next code pairs and decodes back to cities. It is computationally simpler than RQ-VAE pretraining but achieved lower peak accuracy in these experiments.
-
-\section{Feature Engineering Summary}
-Feature engineering evolved significantly and was central to gains:
-\begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Core sequence}: city token prefixes.
-    \item \textbf{Temporal}: average stay length, last stay days, month bucket.
-    \item \textbf{Trip-structure}: trip length, unique-city count, repetition ratio.
-    \item \textbf{Geography}: last hotel country, number of unique hotel countries, cross-border count/ratio, country streak patterns.
-    \item \textbf{User context}: booker country, device class, affiliate channel.
-    \item \textbf{Optional semantic side IDs}: injected RQ-derived code IDs into embedding models.
-\end{itemize}
-
-\textbf{Important data-quality correction:} context features were revised to avoid future-information leakage by computing prefix-aligned features per sample rather than full-trip statistics during training.
-
-\section{Experimental Outcomes}
-Table~\ref{tab:results} summarizes the best reported values from the project notes.
-
+\section*{Main Results}
 \begin{table}[h]
 \centering
-\caption{Best Accuracy@4 by pipeline and backbone (reported).}
-\label{tab:results}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Pipeline} & \textbf{Transformer Best} & \textbf{GRU Best} \\
 \midrule
-Direct Embedding & 0.4871 & 0.4891 \\
-RQ-VAE Codes & 0.3384 & 0.3487 \\
-RQKMeans Codes & 0.3066 & 0.3291 \\
+Embedding (direct city token) & 0.4871 & \textbf{0.4891} \\
+RQ-VAE (code pair decoding) & 0.3384 & 0.3487 \\
+RQKMeans (code pair decoding) & 0.3066 & 0.3291 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Practical Lessons}
+\textbf{Key takeaway}: direct city-token prediction is currently the strongest approach in this project setting.
+
+\section*{Most Important Findings}
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Embedding route is strongest}: direct city classification remained dominant.
-    \item \textbf{Hidden-state handling matters}: correcting sequence final-state extraction improved both GRU and Transformer.
-    \item \textbf{Pooling choice matters}: \texttt{last}/\texttt{mean} performed far better than \texttt{cls} in this setup.
-    \item \textbf{Feature additions can help}: geographic and trip-structure features improved the embedding pipeline.
-    \item \textbf{Semantic side info is nuanced}: RQ semantic IDs sometimes help slightly, but fusion strategy needs careful tuning.
+    \item \textbf{Model family}: Embedding route consistently outperformed code-based routes.
+    \item \textbf{Training strategy}: multi-step training usually improved performance, but increased runtime.
+    \item \textbf{Implementation detail}: fixing hidden-state extraction gave significant gains.
+    \item \textbf{Pooling}: Transformer \texttt{last}/\texttt{mean} worked much better than \texttt{cls}.
+    \item \textbf{Features}: geography and trip-structure features provided measurable improvement.
 \end{itemize}
 
-\section{Engineering and Reproducibility}
-The repository uses modular scripts and package organization:
+\section*{Engineering Notes}
 \begin{itemize}[leftmargin=1.5em]
-    \item \texttt{scripts/} for training entry points per pipeline.
-    \item \texttt{src/features}, \texttt{src/models}, \texttt{src/training}, \texttt{src/datasets}, \texttt{src/utils}.
-    \item Unified launcher support and optional direct script execution.
+    \item Code is modularized into \texttt{src/features}, \texttt{src/models}, \texttt{src/training}, \texttt{src/datasets}, and runnable \texttt{scripts/}.
+    \item A major data-quality fix was applied: context features are now prefix-aligned to avoid future-information leakage.
 \end{itemize}
 
-For reproducibility, key recommendations are:
-\begin{enumerate}[leftmargin=1.5em]
-    \item Freeze Python package versions in \texttt{requirements.txt}.
-    \item Record seeds and hardware context for each run.
-    \item Keep generated artifacts (\texttt{output/}) out of Git and version only code + configs.
-\end{enumerate}
-
-\section{Conclusion and Future Work}
-This project demonstrates that, for this dataset, \textbf{direct city-token modeling with rich context features} is a strong and robust baseline, outperforming the current generative code-decoding alternatives. RQ-style routes remain promising for semantic compression and retrieval-style reasoning, but they currently trail in end-to-end Accuracy@4.
-
-High-impact future directions include:
+\section*{Limitations}
 \begin{itemize}[leftmargin=1.5em]
-    \item Validation-based early stopping and hyperparameter sweeps.
-    \item Better calibrated fusion of sequence and context (e.g., stronger gated conditioning).
-    \item Improved code-to-city decoding and reranking for RQ pipelines.
-    \item Ensemble methods across embedding and code-based models.
+    \item Results are based on repository-best runs across multiple feature/architecture revisions.
+    \item RQ-based methods may need stronger decoding/reranking to close the gap.
+    \item Not all hyperparameter combinations were exhaustively searched.
+\end{itemize}
+
+\section*{Next Steps}
+\begin{itemize}[leftmargin=1.5em]
+    \item add validation-based early stopping and scheduler tuning,
+    \item improve RQ code-to-city decoding and reranking,
+    \item test lightweight ensemble of embedding + RQ pipelines.
+\end{itemize}
+
+\section*{Selected References}
+\begin{itemize}[leftmargin=1.5em]
+    \item Booking.com Multi-Destination Trips Dataset: \url{https://github.com/bookingcom/ml-dataset-mdt}
+    \item van den Oord et al., ``Neural Discrete Representation Learning'' (NeurIPS 2017).
+    \item Jegou et al., ``Product Quantization for Nearest Neighbor Search'' (TPAMI 2011).
+    \item Sun et al., ``BERT4Rec'' (CIKM 2019).
+    \item Rajput et al., ``Recommender Systems with Generative Retrieval'' (NeurIPS 2023).
 \end{itemize}
 
 \end{document}
